@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html class="uk-height-1-1">
+<head>
+    <meta charset="utf-8" />
+    {% block meta %}<!-- block meta  -->{% endblock %}
+    <title>{% block title %} ? {% endblock %} - Awesome Python Webapp</title>
+    <link rel="stylesheet" href="/static/css/uikit.min.css">
+    <link rel="stylesheet" href="/static/css/uikit.gradient.min.css">
+    <link rel="stylesheet" href="/static/css/awesome.css">
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/sha1.min.js"></script>                                                                                                                      
+    <script src="/static/js/uikit.min.js"></script>
+    <script src="/static/js/vue.min.js"></script>
+    <script src="/static/js/awesome.js"></script>
+    {% block beforehead %}<!-- before head  -->{% endblock %}
+</head>
+<body class="uk-height-1-1">
+    <div class="uk-grid uk-height-1-1">
+        <div class="uk-width-medium-1-4 uk-height-1-1">
+            <div class="uk-panel uk-panel-box uk-height-1-1">
+                <h3 class="uk-panel-title">管理菜单</h3>
+                <ul class="uk-nav uk-nav-side">
+                    <li class="uk-active">
+                        <a href="/manage/"><i class="uk-icon-user"></i> {{ __user__.id }} </a>
+                    </li>
+                    <li class="uk-nav-header">用户菜单</li>
+                    <li>
+                        <a href="/manage/signin">重新登录</a>
+                        <a href="/manage/change_password">修改密码</a>
+                        <a href="/signout">退出登录</a>
+                    </li>
+                    <li class="uk-nav-header">员工管理</li>
+                    <li>
+                        <a href="/manage/add_employee">员工添加</a>
+                        <a href="/manage/delete_employee">员工删除</a>
+                        <a href="/manage/change_position">员工调职</a>
+                        <a href="/manage/modify_employee_info">修改员工信息</a>
+                        <a href="/manage/manage_employee_skills">员工技能管理</a>
+                    </li>
+                    <li class="uk-nav-header">部门管理</li>
+                    <li>
+                        <a href="/manage/add_department">部门添加</a>
+                        <a href="/manage/delete_department">部门删除</a>
+                        <a href="/manage/modify_department_info">修改部门信息</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="uk-width-medium-3-4 uk-container-center">
+	    <!-- content -->
+	    {% block content %}
+	    {% endblock %}
+	    <!-- // content -->
+        </div>
+    </div>
+</body>
+</html>
