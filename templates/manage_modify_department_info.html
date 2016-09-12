@@ -1,0 +1,109 @@
+{% extends 'manage_base.html' %}
+
+{% block title %} 修改部门信息 {% endblock %}
+
+{% block beforehead %}
+<link rel="stylesheet" href="/static/css/components/notify.gradient.min.css" />
+<script src="/static/js/components/notify.min.js"></script>
+<script>
+$(function () {
+    var search = new Vue({
+        el: '#search',
+        data: {
+            dept_id: ''
+        },
+        methods: {
+            submit: function(event) {
+                event.preventDefault();
+                var $form = $('#search');
+                if (! this.dept_id.trim()) {
+                    return $form.showFormError('请输入部门编号');
+                }
+                if ( parseInt(this.dept_id.trim()) > 255) {
+                    return $form.showFormError('部门编号过大！');
+                }
+                $form.postJSON('/api/search_department', {
+                    id: this.dept_id.trim()
+                }, function(err, r) {
+                    if (err) {
+                        return $form.showFormError(err);
+                    }
+                    modify_department_info.dept_id = r["id"];
+                    modify_department_info.name = r["name"];
+                    if(r["manager_id"] != null){
+                        modify_department_info.manager_id = r["manager_id"];
+                    }
+                    return location.assign('#');
+                });
+            }
+        }
+    });
+    $('#search').show();
+    var modify_department_info = new Vue({
+        el: '#modify_department_info',
+        data: {
+            dept_id: '',
+            name: '',
+            manager_id: ''
+        },
+        methods: {
+            submit: function(event) {
+                event.preventDefault();
+                var $form = $('#modify_department_info');
+                if (! this.name.trim()) {
+                    return $form.showFormError('请输入部门名称');
+                }
+                if (! this.manager_id.trim()) {
+                    return $form.showFormError('请输入部门经理编号');
+                }
+                $form.postJSON('/api/modify_department_info', {
+                    id: this.dept_id,
+                    name: this.name.trim(),
+                    manager_id: this.manager_id.trim()
+                }, function (err, r) {
+                    if (err) {
+                        return $form.showFormError(err);
+                    }
+                    UIkit.notify("<i class='uk-icon-check'></i>部门信息修改成功！", {status:'success'});
+                    return location.assign('#');
+                });
+            }
+        }
+    });
+    $('#modify_department_info').show();
+    $("#search_button").attr("disabled",false);
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="uk-panel uk-container-center uk-margin-large-top">
+    <form id="search" v-on="submit: submit" class="uk-form uk-form-horizontal">
+        <legend>修改部门信息</legend>
+        <div class="uk-alert uk-alert-danger uk-hidden"></div>
+        <label class="uk-form-label">部门编号：</label>
+        <input v-model="dept_id" type="text" autocomplete="off" maxlength="50" placeholder="输入编号" />
+        <button id="search_button" type="submit" class="uk-button uk-button-primary"><i class="uk-icon-search"></i></button>
+    </form>
+    <hr class="uk-article-divider" />
+    <form id="modify_department_info" v-on="submit: submit" class="uk-form uk-form-horizontal">
+        <div class="uk-alert uk-alert-danger uk-hidden"></div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">部门名称：</label>
+            <div class="uk-form-controls">
+                <input v-model="name" type="text" autocomplete="off" maxlength="50" placeholder="输入部门名称" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">部门经理编号：</label>
+            <div class="uk-form-controls">
+                <input v-model="manager_id" type="text" autocomplete="off" maxlength="50" placeholder="输入经理编号" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <button type="submit" class="uk-button uk-button-primary">确认</button>
+            <button type="reset" class="uk-button">取消</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

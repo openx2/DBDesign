@@ -1,0 +1,154 @@
+{% extends 'manage_base.html' %}
+
+{% block title %} 员工技能管理 {% endblock %}
+
+{% block beforehead %}
+<link rel="stylesheet" href="/static/css/components/notify.gradient.min.css" />
+<script src="/static/js/components/notify.min.js"></script>
+<script>
+$(function () {
+    var search = new Vue({
+        el: '#search',
+        data: {
+            emp_id: ''
+        },
+        methods: {
+            submit: function(event) {
+                event.preventDefault();
+                var $form = $('#search');
+                $form.postJSON('/api/search_emp_skills', {
+                    emp_id: this.emp_id.trim()
+                }, function(err, r) {
+                    if (err) {
+                        return $form.showFormError(err);
+                    }
+                    refreshTable(r);
+                });
+            }
+        }
+    });
+    $('#search').show();
+    var operate_emp_skill = new Vue({
+        el: '#operate_emp_skill',
+        data: {
+            emp_id: '',
+            skill_id: ''
+        },
+        methods: {
+            submit: function(event) {
+                event.preventDefault();
+                if (! this.emp_id.trim()) {
+                    UIkit.notify("<i class='uk-icon-times'></i>请输入员工编号", {status: 'danger'});
+                }
+                if (! this.skill_id.trim()) {
+                    UIkit.notify("<i class='uk-icon-times'></i>请输入技能编号", {status: 'danger'});
+                }
+                var $form = $('#operate_emp_skill');
+                $form.postJSON('/api/add_emp_skill', {
+                    emp_id: this.emp_id.trim(),
+                    skill_id: this.skill_id.trim()
+                }, function(err, r) {
+                    if (err) {
+                        UIkit.notify("<i class='uk-icon-times'></i>"+err.message, {status: 'danger'});
+                    }
+                    return location.assign('#');
+                });
+            },
+            delete_emp_skill: function() {
+                if (! this.emp_id.trim()) {
+                    UIkit.notify("<i class='uk-icon-times'></i>请输入员工编号", {status: 'danger'});
+                    return $form.showFormError('请输入员工编号');
+                }
+                if (! this.skill_id.trim()) {
+                    UIkit.notify("<i class='uk-icon-times'></i>请输入技能编号", {status: 'danger'});
+                }
+                var $form = $('#vm');
+                $form.postJSON('/api/delete_emp_skill', {
+                    emp_id: this.emp_id.trim(),
+                    skill_id: this.skill_id.trim()
+                }, function(err, r) {
+                    if (err) {
+                        UIkit.notify("<i class='uk-icon-times'></i>"+err.message, {status: 'danger'});
+                    }
+                    return location.assign('#');
+                });
+            }
+        }
+    });
+    $('#operate_emp_skill').show();
+    $('#search_button').attr('disabled', false);
+});
+function refreshTable(data) {
+    var vm = new Vue({
+        el: '#vm',
+        data: {
+            emp_skills: data.emp_skills
+        },
+        methods: {
+            del_emp_skill: function(id) {
+                postJSON('/api/delete_emp_skill/'+id, {},
+                    function (err, r) {
+                        if(err) {
+                            return UIkit.notify('<i class="uk-icon-times"></i>'+err.message, {status: 'danger'});
+                        }
+                        UIkit.notify('<i class="uk-icon-check"></i>删除员工'+r["emp_id"]+'的技能$'+r["skill_id"]+':'+r["skill_name"]+'$成功！', {status: 'success'});
+                    }
+                );
+            }
+        }
+    });
+    $('#vm').show();
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<article class="uk-article uk-container-center uk-margin-large-top">
+    <h1 class="uk-article-title">员工技能管理</h1>
+    <form id="search" v-on="submit: submit" class="uk-form uk-form-horizontal">
+        <legend>搜索员工技能</legend>
+        <div class="uk-alert uk-alert-danger uk-hidden"></div>
+        <label class="uk-form-label">员工编号：</label>
+        <input v-model="emp_id" type="text" autocomplete="off" maxlength="50" placeholder="输入编号" />
+        <button id="search_button" type="submit" class="uk-button uk-button-primary"><i class="uk-icon-search"></i></button>
+    </form>
+    <hr class="uk-article-divider" />
+    <form id="operate_emp_skill" v-on="submit: submit" class="uk-form uk-form-horizontal">
+        <legend>增删员工技能</legend>
+        <div class="uk-alert uk-alert-danger uk-hidden"></div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">员工编号：</label>
+            <input v-model="emp_id" type="text" autocomplete="off" maxlength="50" placeholder="输入编号" />
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">技能编号：</label>
+            <input v-model="skill_id" type="text" autocomplete="off" maxlength="50" placeholder="输入编号" />
+        </div>
+        <div class="uk-form-row">
+            <button id="add_button" type="submit" class="uk-button uk-button-success">添加</button>
+            <button id="delete_button" type="button" v-on="click: delete_emp_skill" class="uk-button uk-button-danger">删除</button>
+        </div>
+    </form>
+    <hr class="uk-article-divider" />
+    <table id="vm" class="uk-table uk-table-hover">
+		<thead>
+			<tr>
+				<th class="uk-width-2-10">员工编号</th>
+				<th class="uk-width-2-10">技能编号</th>
+				<th class="uk-width-5-10">技能名称</th>
+				<th class="uk-width-1-10">删除</th>
+			</tr>
+		</thead>
+        <tbody>
+            <tr v-repeat="es: emp_skills">
+                <td v-text="es['emp_id']"></td>
+                <td v-text="es['skill_id']"></td>
+                <td v-text="es['skill_name']"></td>
+                <td>
+                    <a href="#" v-on="click:del_emp_skill(es['id'])"><i class="uk-icon-trash-o"></i></a>
+                </td>
+            </tr>
+        </tbody>
+	</table>
+</article>
+{% endblock %}

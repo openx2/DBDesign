@@ -1,0 +1,124 @@
+{% extends 'manage_base.html' %}
+
+{% block title %} 员工调职 {% endblock %}
+
+{% block beforehead %}
+<link rel="stylesheet" href="/static/css/components/form-select.gradient.min.css" />
+<link rel="stylesheet" href="/static/css/components/datepicker.gradient.min.css" />
+<link rel="stylesheet" href="/static/css/components/notify.gradient.min.css" />
+<script src="/static/js/components/form-select.min.js"></script>
+<script src="/static/js/components/datepicker.min.js"></script>
+<script src="/static/js/components/notify.min.js"></script>
+<script>
+$(function () {
+    var change_position = new Vue({
+        el: '#change_position',
+        data: {
+            emp_id: '',
+            name: '',
+            level: '',
+            dept_number: '',
+            leader_id: ''
+        },
+        methods: {
+            submit: function(event) {
+                event.preventDefault();
+                var
+                    $form = $('#change_position'),
+                    change_date = $("input[type='']").val();
+                if (! this.emp_id.trim()) {
+                    return $form.showFormError('请输入员工编号');
+                }
+                if (! this.name.trim()) {
+                    return $form.showFormError('请输入员工姓名');
+                }
+                if (! change_date.trim()) {
+                    return $form.showFormError('请输入调职日期');
+                }
+                if (! /^\d{4}-\d{2}-\d{2}$/.test(change_date)) {
+                    return $form.showFormError('请在日历上选择调职日期');
+                }
+                if (! this.level.trim()) {
+                    return $form.showFormError('请输入员工级别');
+                }
+                $form.postJSON('/api/change_position', {
+                    emp_id: this.emp_id.trim(),
+                    name: this.name.trim(),
+                    change_date: change_date,
+                    level: parseInt(this.level),
+                    dept_number: parseInt(this.dept_number.trim()),
+                    leader_id: this.leader_id.trim()
+                }, function (err, r) {
+                    if (err) {
+                        return $form.showFormError(err);
+                    }
+                    UIkit.notify("<i class='uk-icon-check'></i>员工"+r["name"]+"调职成功！产生的员工编号为"+r["id"],
+                                                                                    {status:'success'});
+                    return location.assign('#');
+                });
+            }
+        }
+    });
+    $('#change_position').show();
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="uk-grid uk-container-center uk-margin-large-top">
+    <form id="change_position" v-on="submit: submit" class="uk-form uk-form-horizontal">
+	<legend>员工调职</legend>
+        <div class="uk-alert uk-alert-danger uk-hidden"></div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">员工编号：</label>
+            <div class="uk-form-controls">
+                <input v-model="emp_id" type="text" autocomplete="off" maxlength="50" placeholder="输入编号" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">姓名：</label>
+            <div class="uk-form-controls">
+                <input v-model="name" type="text" autocomplete="off" maxlength="50" placeholder="输入姓名" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">调职日期：</label>
+            <div class="uk-form-controls">
+                <input type="" readonly="readonly" data-uk-datepicker="{weekstart:0, format:'YYYY-MM-DD'}" placeholder="YYYY-MM-DD" v-model="change_date"/>
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">级别：</label>
+            <div class="uk-form-controls">
+                <div class="uk-button uk-form-select uk-active" data-uk-form-select="">
+                    <span>——请选择——</span>
+                    <i class="uk-icon-caret-down"></i>
+                    <select v-model="level">
+                        <option value="4">总经理</option>
+                        <option value="3">部门经理</option>
+                        <option value="2">组长</option>
+                        <option value="1">普通员工</option>
+                        <option value="0">试用员工</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">入职部门：</label>
+            <div class="uk-form-controls">
+                    <input type="text" placeholder="部门编号" v-model="dept_number" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">领导编号：</label>
+            <div class="uk-form-controls">
+                <input type="text" maxlength="50" v-model="leader_id" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <button type="submit" class="uk-button uk-button-primary">确认</button>
+            <button type="reset" class="uk-button">取消</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

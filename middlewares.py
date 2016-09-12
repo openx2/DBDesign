@@ -7,7 +7,7 @@ __author__ = 'cx'
 middlewares used by the application
 '''
 
-import asyncio, logging, json
+import asyncio, logging, json, datetime
 
 from aiohttp import web
 from handlers import cookie2user, COOKIE_NAME
@@ -57,7 +57,7 @@ async def response_factory(app, handler):
             #如果没有，说明要返回json字符串，则把字典转换为json返回，响应类型设为json类型
             if template is None:
                 resp = web.Response(body=json.dumps(r, ensure_ascii=False,
-                                default=lambda o: o.__dict__).encode('utf-8'))
+                                default=json_default).encode('utf-8'))
                 resp.content_type = 'application/json;charset=utf-8'
                 return resp
             else:
@@ -85,6 +85,12 @@ async def response_factory(app, handler):
         resp.content_type = 'text/plain;charset=utf-8'
         return resp
     return response
+
+def json_default(obj):
+    if isinstance(obj, datetime.date):
+        return str(obj)
+    else:
+        return obj.__dict__
 
 async def auth_factory(app, handler):
     async def auth(request):

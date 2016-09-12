@@ -55,3 +55,19 @@ class DimssionEmployee(Model):
     phone_num = StringField(ddl='varchar(20)')
     join_date = DatetimeField()
     leave_date = DatetimeField()
+
+class Skills(Model):
+    '''技能表，包括技能编号和技能名称'''
+    __table__ = 'skills'
+
+    id = IntegerField(primary_key=True)
+    name = StringField(ddl='varchar(100)')
+
+class EmpSkills(Model):
+    '''员工技能对照表，包括条目id、员工编号、技能编号'''
+    __table__ = 'emp_skills'
+
+    id = IntegerField(primary_key=True)
+    emp_id = StringField(ddl='char(20)')
+    skill_id = IntegerField()
+

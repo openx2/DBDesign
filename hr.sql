@@ -55,13 +55,23 @@ create table users (
     primary key (`id`)
 ) engine = innodb default charset=utf8;
 
--- 员工掌握的技能/培训过的课程
+-- 技能表，包括编号，技能名称
+create table skills (
+    `id` smallint not null,
+    `name` varchar(100) not null,
+    primary key ( `id`)
+) engine = innodb default charset=utf8;
+
+-- 员工技能对照表，包括自动增长的主键、员工编号、技能编号
 create table emp_skills (
+    `id` int not null auto_increment,
     `emp_id` char(20) not null,
-    `skill` varchar(100) not null,
+    `skill_id` smallint not null,
     foreign key `fk_emp_id` (`emp_id`) 
 		    references employees(`id`),
-    primary key (`emp_id`, `skill`)
+    foreign key `fk_skill_id` (`skill_id`) 
+		    references skills(`id`),
+    primary key (`id`)
 ) engine = innodb default charset=utf8;
 
 -- 员工每月的奖金、罚款数额

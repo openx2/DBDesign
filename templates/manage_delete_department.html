@@ -1,0 +1,70 @@
+{% extends 'manage_base.html' %}
+
+{% block title %} 删除部门 {% endblock %}
+
+{% block beforehead %}
+<link rel="stylesheet" href="/static/css/components/notify.gradient.min.css" />
+<script src="/static/js/components/notify.min.js"></script>
+<script>
+$(function () {
+    var delete_department = new Vue({
+        el: '#delete_department',
+        data: {
+            id: '',
+            name: '',
+        },
+        methods: {
+            submit: function(event) {
+                event.preventDefault();
+                var $form = $('#delete_department');
+                if (! this.id.trim()) {
+                    return $form.showFormError('请输入部门编号');
+                }
+                if ( parseInt(this.id.trim()) > 255) {
+                    return $form.showFormError('部门编号过大！');
+                }
+                if (! this.name.trim()) {
+                    return $form.showFormError('请输入部门名称');
+                }
+                $form.postJSON('/api/delete_department', {
+                    id: this.id.trim(),
+                    name: this.name.trim(),
+                }, function (err, r) {
+                    if (err) {
+                        return $form.showFormError(err);
+                    }
+                    UIkit.notify("<i class='uk-icon-check'></i>该部门删除成功！", {status:'success'});
+                    return location.assign('#');
+                });
+            }
+        }
+    });
+    $('#delete_department').show();
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="uk-grid uk-container-center uk-margin-large-top">
+    <form id="delete_department" v-on="submit: submit" class="uk-form uk-form-horizontal">
+	<legend>删除部门</legend>
+        <div class="uk-alert uk-alert-danger uk-hidden"></div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">部门编号：</label>
+            <div class="uk-form-controls">
+                <input v-model="id" type="text" autocomplete="off" maxlength="50" placeholder="输入部门编号(小于200)" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">部门名称：</label>
+            <div class="uk-form-controls">
+                <input v-model="name" type="text" autocomplete="off" maxlength="50" placeholder="输入部门名称" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <button type="submit" class="uk-button uk-button-primary">确认</button>
+            <button type="reset" class="uk-button">取消</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
