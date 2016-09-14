@@ -85,8 +85,8 @@ function refreshTable(data) {
             emp_skills: data.emp_skills
         },
         methods: {
-            del_emp_skill: function(id) {
-                postJSON('/api/delete_emp_skill/'+id, {},
+            del_emp_skill: function(emp_skill) {
+                postJSON('/api/delete_emp_skill/'+emp_skill['id'], {},
                     function (err, r) {
                         if(err) {
                             return UIkit.notify('<i class="uk-icon-times"></i>'+err.message, {status: 'danger'});
@@ -94,6 +94,24 @@ function refreshTable(data) {
                         UIkit.notify('<i class="uk-icon-check"></i>删除员工'+r["emp_id"]+'的技能$'+r["skill_id"]+':'+r["skill_name"]+'$成功！', {status: 'success'});
                     }
                 );
+            },
+            modify_emp_skill: function(emp_skill) {
+                UIkit.modal.prompt('技能熟练度改为：',emp_skill['proficiency'], function (val) {
+                    proficiency = parseInt(val)
+                    if(! proficiency || proficiency > 4 || proficiency < 1) {
+                            return UIkit.notify('<i class="uk-icon-times"></i>请输入1-4之间的数字', {status: 'danger'});
+                    }
+                    postJSON('/api/modify_emp_skill/'+emp_skill['id'], {
+                        proficiency: proficiency
+                    },
+                    function (err, r) {
+                        if(err) {
+                            return UIkit.notify('<i class="uk-icon-times"></i>'+err.message, {status: 'danger'});
+                        }
+                        emp_skill["proficiency"] = val
+                        UIkit.notify('<i class="uk-icon-check"></i>修改员工'+r["emp_id"]+'的技能$'+r["skill_id"]+':'+r["skill_name"]+'$熟练度为'+r["proficiency"]+'成功！', {status: 'success'});
+                    });
+                });
             }
         }
     });
@@ -134,9 +152,10 @@ function refreshTable(data) {
 		<thead>
 			<tr>
 				<th class="uk-width-2-10">员工编号</th>
-				<th class="uk-width-2-10">技能编号</th>
+				<th class="uk-width-1-10">技能编号</th>
 				<th class="uk-width-5-10">技能名称</th>
-				<th class="uk-width-1-10">删除</th>
+				<th class="uk-width-1-10">技能熟练度</th>
+				<th class="uk-width-1-10">管理</th>
 			</tr>
 		</thead>
         <tbody>
@@ -144,8 +163,10 @@ function refreshTable(data) {
                 <td v-text="es['emp_id']"></td>
                 <td v-text="es['skill_id']"></td>
                 <td v-text="es['skill_name']"></td>
+                <td v-text="es['proficiency']"></td>
                 <td>
-                    <a href="#" v-on="click:del_emp_skill(es['id'])"><i class="uk-icon-trash-o"></i></a>
+                    <a href="#" v-on="click:modify_emp_skill(es)"><i class="uk-icon-edit"></i></a>
+                    <a href="#" v-on="click:del_emp_skill(es)"><i class="uk-icon-trash-o"></i></a>
                 </td>
             </tr>
         </tbody>

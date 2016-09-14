@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    {% block meta %}<!-- block meta  -->{% endblock %}
+    <title>{% block title %} ? {% endblock %} - Awesome Python Webapp</title>
+    <link rel="stylesheet" href="/static/css/uikit.min.css">
+    <link rel="stylesheet" href="/static/css/uikit.gradient.min.css">
+    <link rel="stylesheet" href="/static/css/awesome.css" />
+    <link rel="stylesheet" href="/static/css/components/notify.gradient.min.css" />
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/uikit.min.js"></script>
+    <script src="/static/js/vue.min.js"></script>
+    <script src="/static/js/awesome.js"></script>
+    <script src="/static/js/components/notify.min.js"></script>
+    <script>
+    $(function () {
+        var change_password = new Vue({
+            el: '#change_password',
+            data: {
+                origin_pwd: '',
+                new_pwd: '',
+                new_pwd_repeat: ''
+            },
+            methods: {
+                change_password: function () {
+                    if (this.new_pwd.length < 6) {
+                        return UIkit.notify('<i class="uk-icon-times"></i>口令长度至少为6个字符', {status:'danger'});
+                    }
+                    if (this.new_pwd != this.new_pwd_repeat) {
+                        return UIkit.notify('<i class="uk-icon-times"></i>两次输入的口令不一致', {status:'danger'});
+                    }
+                    postJSON('/api/change_password',{
+                        origin_password: this.origin_pwd,
+                        password: this.new_pwd
+                    },function (err, r) {
+                        if (err) {
+                            return UIkit.notify('<i class="uk-icon-times"></i>'+err.message, {status:'danger'});
+                        }
+                        UIkit.notify('<i class="uk-icon-check"></i>密码修改成功！', {status:'success'});
+                        change_password.origin_pwd = '', change_password.new_pwd = '', change_password.new_pwd_repeat = '';
+                        return location.assign('#');
+                    });
+                }
+            }
+        });
+        var sign = new Vue({
+            el: '#sign',
+            methods: {
+                come: function () {
+                    postJSON('/api/employee_come', {},
+                        function (err, r) {
+                            if(err) {
+                                return UIkit.notify('<i class="uk-icon-times"></i>'+err.message, {status:'danger'});
+                            }
+                            UIkit.notify('<i class="uk-icon-check"></i>签到成功！', {status:'success'});
+                            return location.assign('#');
+                        }
+                    );
+                },
+
+                leave: function () {
+                    postJSON('/api/employee_leave', {},
+                        function (err, r) {
+                            if(err) {
+                                return UIkit.notify('<i class="uk-icon-times"></i>'+err.message, {status:'danger'});
+                            }
+                            UIkit.notify('<i class="uk-icon-check"></i>签离成功！', {status:'success'});
+                            return location.assign('#');
+                        }
+                    );
+                }
+            }
+        });
+    });
+    </script>
+    {% block beforehead %}<!-- before head  -->{% endblock %}
+</head>
+
+<body>
+    <nav class="uk-navbar uk-navbar-attached uk-margin-bottom">
+        <div class="uk-container uk-container-center">
+            <a href="/" class="uk-navbar-brand"><i class="uk-icon-github-alt"></i>数据库课程设计</a>
+            <div class="uk-navbar-flip">
+                <ul class="uk-navbar-nav">
+                    <li class="uk-parent" data-uk-dropdown>
+                        <a id="user" href="javascript:void(0);"><i class="uk-icon-user"></i> {{ __user__.name }}[{{ __user__.id }}]</a>
+                        <div class="uk-dropdown uk-dropdown-navbar">
+                            <ul class="uk-nav uk-nav-navbar">
+                                <li><a href="/personal_info"> 个人信息</a></li>
+                                <li><a href="/query_salary"> 工资查询</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li class="uk-parent" data-uk-dropdown>
+                        <a id="user" href="javascript:void(0);"><i class="uk-icon-edit"></i> 打卡</a>
+                        <div id="sign" class="uk-dropdown uk-dropdown-navbar">
+                            <ul class="uk-nav uk-nav-navbar">
+                                <li><a href="#" v-on="click: come"> 签到</a></li>
+                                <li><a href="#" v-on="click: leave"> 签离</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    {% if __user__.authority < 10 %}
+                    <li class="uk-parent" data-uk-dropdown>
+                        <a href="javascript:void(0);"><i class="uk-icon-male"></i> 下属管理</a>
+                        <div class="uk-dropdown uk-dropdown-navbar">
+                            <ul class="uk-nav uk-nav-navbar">
+                                <li><a href="/verificate_vacation"> 确认请假</a></li>
+                                <li><a href="/determine_bonuses"> 决定奖金</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    {% endif %}
+                    <li><a href="#change_password" data-uk-modal><i class="uk-icon-key"></i> 修改密码</a></li>
+                    <li><a href="/signout"><i class="uk-icon-sign-out"></i> 登出</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div id="change_password" class="uk-modal">
+        <div class="uk-modal-dialog"> 
+            <a class="uk-modal-close uk-close"></a>
+            <div class="uk-modal-header uk-text-large uk-text-bold">修改密码</div>
+            <div class="uk-modal-content uk-form">原密码:</div>
+            <div class="uk-margin-small-top uk-modal-content uk-form">
+                <p><input class="uk-width-1-1" type="password" v-model="origin_pwd"></p>
+            </div>
+            <div class="uk-modal-content uk-form">新密码:</div>
+            <div class="uk-margin-small-top uk-modal-content uk-form">
+                <p><input class="uk-width-1-1" type="password" v-model="new_pwd"></p>
+            </div>
+            <div class="uk-modal-content uk-form">确认新密码:</div>
+            <div class="uk-margin-small-top uk-modal-content uk-form">
+                <p><input class="uk-width-1-1" type="password" v-model="new_pwd_repeat"></p>
+            </div>
+            <div class="uk-modal-footer uk-text-right">
+                <button class="uk-button uk-button-primary uk-modal-close" v-on="click: change_password">确定</button>
+                <button class="uk-button uk-modal-close">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="uk-container uk-container-center">
+        <div class="uk-grid">
+            <!-- content -->
+            {% block content %}
+            {% endblock %}
+            <!-- // content -->
+        </div>
+    </div>
+
+</body>
+</html>

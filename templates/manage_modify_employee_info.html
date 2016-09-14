@@ -36,13 +36,18 @@ $(function () {
                     modify_employee_info.emp_id = r["id"];
                     modify_employee_info.name = r["name"];
                     modify_employee_info.sex = r["sex"];
-                    $("input[name=sex]:eq("+r["sex"]+")").prop("checked",true)
+                    $("input[name=sex]:eq("+r["sex"]+")").prop("checked",true);
                     modify_employee_info.email = r["email"];
                     modify_employee_info.phone_number = r["phone_num"];
                     $("#join_date").val(r["join_date"]);
                     modify_employee_info.level = r["level"].toString();
                     $("#level_text").html($("option[value='"+r["level"]+"']").html());
-                    $("#dept_number").html(r["dno"]);
+                    if (r["dno"]) {
+                        $("#dept_number").html(r["dno"]);
+                    }
+                    else {
+                        $("#dept_number").html('无');
+                    }
                     if(r["leader_id"] != null){
                         modify_employee_info.leader_id = r["leader_id"];
                     }
@@ -100,8 +105,7 @@ $(function () {
                     if (err) {
                         return $form.showFormError(err);
                     }
-                    UIkit.notify("<i class='uk-icon-check'></i>员工信息修改成功！产生的员工编号为"+r["id"],
-                                                                                        {status:'success'});
+                    UIkit.notify("<i class='uk-icon-check'></i>员工信息修改成功！", {status:'success'});
                     return location.assign('#');
                 });
             }

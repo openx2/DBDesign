@@ -11,14 +11,16 @@ import pymysql
 
 from apis import APIError, APIValueError, APIPermissionError, APIResourceNotFoundError
 from coroweb import get, post
-from models import User, Employee, Department, LevelSalary, DimssionEmployee, Skills, EmpSkills
+from models import Employee, Department, LevelSalary, Skill, EmpSkill, Attendance, EmpBonusFine
 
 @get('/')
 def index():
-    return web.Response(body=b'<b>OK</b>')
+    return {
+        '__template__' : '__base__.html'
+    }
 
 @get('/signin')
-def signin():
+def signin(request):
     return {
         '__template__' : 'signin.html'
     }
@@ -29,6 +31,14 @@ def signout():
     r.set_cookie(COOKIE_NAME, '-delete-', max_age=0, httponly=True)
     logging.info('user signed out.')
     return r
+
+@get('/personal_info')
+async def get_personal_info(request):
+    user = request.__user__
+    return {
+        '__template__': 'personal_info.html',
+        'emp': user
+    }
 
 @get('/manage/')
 def manage():
@@ -103,11 +113,20 @@ def hide():
     }
 
 salt = 'sdu'
+origin_password = '123456'
 GENERAL_MANAGER_LEVEL = 4
-DEPT_MANAGER_LEVEL = 4
+DEPT_MANAGER_LEVEL = 3
 COOKIE_NAME = 'hr_dbdesign'
 _COOKIE_KEY = 'software academy'
 __skills = None
+
+def json_default(obj):
+    if isinstance(obj, datetime.date):
+        return str(obj)
+    elif isinstance(obj, datetime.datetime):
+        return str(obj)
+    else:
+        return obj.__dict__
 
 def user2cookie(user, max_age):
     '''
@@ -132,7 +151,7 @@ async def cookie2user(cookie_str):
         uid, expires, sha1 = L
         if int(expires) < time.time():
             return None
-        user = await User.find(uid)
+        user = await Employee.find(uid)
         if user is None:
             return None
         s = '%s-%s-%s-%s' % (user.id, user.password, expires, _COOKIE_KEY)
@@ -177,6 +196,10 @@ async def validateDeptAndLeader(dept_num, leader_id, level):
                         (await Employee.findAll('`level`=?', [level])) != []:
         raise APIValueError('duplicate general manager', '已经存在总经理')
 
+def getSHA1(id, password):
+    return hashlib.sha1((id + hashlib.sha1((id+password+salt).encode('utf-8'))\
+                                         .hexdigest() + salt).encode('utf-8'))
+
 async def getEmployeeID(join_date,dept_num):
     dept = await Department.find(dept_num)
     first_part = join_date.replace('-','')
@@ -184,16 +207,24 @@ async def getEmployeeID(join_date,dept_num):
     third_part = '%09d' % dept.last_num if dept else '0'*9
     return first_part+second_part+third_part
 
+def getAttendanceID(dt, emp_id):
+    date = datetime.datetime.strftime(dt,'%Y%m%d')
+    time_period = 'am' if dt.hour < 12 else 'pm'
+    return date+time_period+emp_id
+
 @post('/api/authenticate')
 async def authenticate(*, id, password):
     if not id:
         raise APIValueError('id', 'Invalid ID.')
     if not password:
         raise APIValueError('password', 'Invalid password.')
-    users = await User.findAll('`id`=?', [id])
+    users = await Employee.findAll('`id`=?', [id])
     if len(users) == 0:
         raise APIValueError('id', 'ID not exist.')
     user = users[0]
+    #check user whether dimissioned
+    if user.leave_date is not None:
+        raise APIValueError('leave_date','员工已离职，不能登录系统')
     #check password
     sha1 = hashlib.sha1((user.id+password+salt).encode('utf-8'))
     if user.password != sha1.hexdigest():
@@ -204,18 +235,24 @@ async def authenticate(*, id, password):
                                                                 httponly=True)
     user.password = '******'
     r.content_type = 'application/json'
-    r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
+    r.body = json.dumps(user, ensure_ascii=False, default=json_default).encode('utf-8')
     return r
 
 @post('/api/change_password')
-async def changePassword(request, *, password):
+async def changePassword(request, *, origin_password, password):
     if not password:
         raise APIValueError('password', 'Invalid password.')
     user = request.__user__
+    users = await Employee.findAll('`id`=?', [user.id])
+    if len(users) == 0:
+        raise APIValueError('id', 'ID not exist.')
+    user = users[0]
+    #check password
+    sha1 = getSHA1(user.id, origin_password)
+    if user.password != sha1.hexdigest():
+        raise APIValueError('password', '原密码错误！')
     #change password
-    sha1 = hashlib.sha1((user.id +
-             hashlib.sha1((user.id+password+salt).encode('utf-8')).hexdigest() +
-                        salt).encode('utf-8'))
+    sha1 = getSHA1(user.id, password)
     user.password = sha1.hexdigest()
     await user.update()
     logging.info('user %s\'s password changed' % user.id)
@@ -225,7 +262,7 @@ async def changePassword(request, *, password):
                                                                 httponly=True)
     user.password = '******'
     r.content_type = 'application/json'
-    r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
+    r.body = json.dumps(user, ensure_ascii=False, default=json_default).encode('utf-8')
     return r
 
 @post('/api/add_employee')
@@ -240,8 +277,10 @@ async def addEmployee(*, name, sex, email, phone_number, join_date, level,
     #生成职员并添加到数据库中
     emp = Employee(id=(await getEmployeeID(join_date,dept_number)),
                name=name.strip(), sex=sex, email=email, phone_num=phone_number,
-                           join_date=join_date, level=level, dno=dept_number,
-                                   leader_id=leader_id if leader_id else None)
+                           join_date=join_date, leave_date=None, level=level,
+                                   leader_id=leader_id if leader_id else None,
+                                dno=dept_number, password=None, authority=10)
+    emp.password = getSHA1(emp.id, origin_password).hexdigest()
     await emp.save()
     logging.info('add employee: %s' % emp)
     #添加完毕，将生成的职员作为json返回
@@ -259,23 +298,47 @@ async def deleteEmployee(*, emp_id, name, leave_date):
     if (await Employee.findNumber('count(`id`)', '`leader_id`=?', [emp_id])) != 0:
         raise APIValueError('emp_id', '该员工还有下属，请先修改所有下属的上司！')
     validateDate(leave_date)
-    if datetime.date(*time.strptime(leave_date, '%Y-%m-%d')) < emp.join_date:
+    if datetime.date(*time.strptime(leave_date, '%Y-%m-%d')[:3]) < emp.join_date:
         raise APIValueError('leave_date', '员工入职日期大于离职日期！')
-    #删除该员工，并将他添加到离职员工表中
-    await emp.remove()
-    dimission_emp = DimssionEmployee(id=emp_id,name=emp.name,sex=emp.sex,
-                                    email=emp.email,phone_num=emp.phone_num,
-                                     join_date=emp.join_date,leave_date=leave_date)
-    await dimission_emp.save()
-    return dimission_emp
+    #设置员工的离职日期
+    emp.leave_date = leave_date
+    await emp.update()
+    return emp
 
 @post('/api/change_position')
 async def changePosition(*, emp_id, name, change_date, level, dept_number,
                                                                 leader_id):
-    emp = (await deleteEmployee(emp_id, name, change_date))
-    return (await addEmployee(name=name, sex=emp.sex, email=emp.email,
-                      phone_number=emp.phone_num, join_date=change_date,
-                     level=level, dept_number=dept_number, leader_id=leader_id))
+    if not emp_id:
+        raise APIValueError('emp_id', 'Invalid employee id.')
+    if not name:
+        raise APIValueError('name', 'Invalid name.')
+    if not level:
+        raise APIValueError('level', 'Invalid level.')
+    validateDate(change_date)
+    await validateDeptAndLeader(dept_number, leader_id, level)
+    emp = await Employee.find(emp_id)
+    if not emp:
+        raise APIValueError('emp_id', '该员工不存在！')
+    if emp.name != name:
+        raise APIValueError('emp_id', '该员工的姓名与你的输入不一致，请检查你的输入！')
+    if (await Employee.findNumber('count(`id`)', '`leader_id`=?', [emp_id])) != 0:
+        raise APIValueError('emp_id', '该员工还有下属，请先修改所有下属的上司！')
+    if datetime.date(*time.strptime(change_date, '%Y-%m-%d')[:3]) < emp.join_date:
+        raise APIValueError('change_date', '员工入职日期大于调职日期！')
+    #将员工原先的记录中的离职日期改为调值日期
+    emp.leave_date = change_date
+    await emp.update()
+    #重新插入一条员工记录
+    emp = Employee(id=(await getEmployeeID(change_date,dept_number)),
+               name=name, sex=emp.sex, email=emp.email, phone_num=emp.phone_num,
+                           join_date=change_date, leave_date=None, level=level,
+                                   leader_id=leader_id if leader_id else None,
+                                dno=dept_number, password=None, authority=10)
+    emp.password = getSHA1(emp.id, origin_password).hexdigest()
+    await emp.save()
+    logging.info('employee change position: %s' % emp)
+    #添加完毕，将生成的职员作为json返回
+    return emp
 
 @post('/api/search_employee')
 async def searchEmployee(*, emp_id):
@@ -289,6 +352,8 @@ async def searchEmployee(*, emp_id):
 @post('/api/modify_employee_info')
 async def modifyEmployeeInfo(*, emp_id, name, sex, email, phone_number, join_date,
                                                              level, leader_id):
+    if not emp_id:
+        raise APIValueError('emp_id', '请填好员工编号！')
     if not name:
         raise APIValueError('name', 'Invalid name.')
     if not level:
@@ -298,6 +363,8 @@ async def modifyEmployeeInfo(*, emp_id, name, sex, email, phone_number, join_dat
     dept_number = emp_id[8:11] if emp_id[8:11] != '000' else None
     #从数据库中搜索出该职员
     emp = await Employee.find(emp_id)
+    if not emp:
+        raise APIValueError('emp_id', '该员工不存在！')
     try:
         await validateDeptAndLeader(dept_number, leader_id, level)
     except APIValueError as e:
@@ -321,30 +388,41 @@ async def modifyEmployeeInfo(*, emp_id, name, sex, email, phone_number, join_dat
 async def search_emp_skills(*, emp_id):
     global __skills
     if not __skills:
-        skills_list = await Skills.findAll()
+        skills_list = await Skill.findAll()
         __skills = {s['id']:s['name'] for s in skills_list}
     if not emp_id:
-        emp_skills = await EmpSkills.findAll()
+        emp_skills = await EmpSkill.findAll()
     else:
-        emp_skills = await EmpSkills.findAll('`emp_id`=?', [emp_id])
+        emp_skills = await EmpSkill.findAll('`emp_id`=?', [emp_id])
     for es in emp_skills:
         es.setdefault('skill_name', __skills[es['skill_id']])
     return dict(emp_skills=emp_skills)
 
 @post('/api/add_emp_skill')
 async def add_emp_skill(*, emp_id, skill_id):
-    emp_skill = await EmpSkills.findAll('`emp_id`=? and `skill_id`=?', [emp_id, skill_id])
+    emp_skill = await EmpSkill.findAll('`emp_id`=? and `skill_id`=?', [emp_id, skill_id])
     if len(emp_skill) != 0:
         raise APIValueError('duplicate record in emp_skills',
                                             '员工技能对照表中已经有了这条记录')
-    emp_skill = EmpSkills(emp_id=emp_id, skill_id=skill_id)
+    emp_skill = EmpSkill(emp_id=emp_id, skill_id=skill_id, proficiency=1)
     await emp_skill.save()
     logging.info('add emp_skill %s' % emp_skill)
     return emp_skill
 
+@post('/api/modify_emp_skill/{id}')
+async def modify_emp_skill(id, *, proficiency):
+    emp_skill = await EmpSkill.find(id)
+    if not emp_skill:
+        raise APIValueError('emp_skill', '找不到该条员工技能记录')
+    emp_skill.proficiency = proficiency
+    await emp_skill.update()
+    emp_skill['skill_name'] = __skills[emp_skill['skill_id']]
+    logging.info('modify emp_skill %s' % emp_skill)
+    return emp_skill
+
 @post('/api/delete_emp_skill')
 async def delete_emp_skill(*, emp_id, skill_id):
-    emp_skill = await EmpSkills.findAll('`emp_id`=? and `skill_id`=?', [emp_id, skill_id])
+    emp_skill = await EmpSkill.findAll('`emp_id`=? and `skill_id`=?', [emp_id, skill_id])
     if not emp_skill:
         raise APIValueError('emp_skill', '找不到该条员工技能记录')
     await (emp_skill[0]).remove()
@@ -354,7 +432,7 @@ async def delete_emp_skill(*, emp_id, skill_id):
 
 @post('/api/delete_emp_skill/{id}')
 async def delete_emp_skill_by_id(id):
-    emp_skill = await EmpSkills.find(id)
+    emp_skill = await EmpSkill.find(id)
     if not emp_skill:
         raise APIValueError('emp_skill', '找不到该条员工技能记录')
     await emp_skill.remove()
@@ -422,3 +500,33 @@ async def modifyDepartmentInfo(*, id, name, manager_id):
     await dept.update()
     logging.info('modify department %s' % dept)
     return dept
+
+@post('/api/employee_come')
+async def employee_come(request):
+    user = request.__user__
+    if not user:
+        raise APIPermissionError('user', '该用户不存在！')
+    now = datetime.datetime.now()
+    attendance = Attendance(id=getAttendanceID(now, user.id), emp_id=user.id,
+                            in_time=str(now), out_time=None, has_vacated=False,
+                                           vertifier_id=None, status=None)
+    try:
+        await attendance.save()
+    except pymysql.err.IntegrityError as e:
+        if e.errno == 1062:
+            raise APIValueError('user', '您已经签到完成！')
+    return attendance
+
+@post('/api/employee_leave')
+async def employee_leave(request):
+    user = request.__user__
+    if not user:
+        raise APIPermissionError('user', '该用户不存在！')
+    now = datetime.datetime.now()
+    id=getAttendanceID(now, user.id)
+    attendance = await Attendance.find(id)
+    if not attendance:
+        raise APIValueError('attendance', '您还未签到！')
+    attendance.out_time = str(now)
+    await attendance.update()
+    return attendance

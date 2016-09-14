@@ -10,7 +10,7 @@ middlewares used by the application
 import asyncio, logging, json, datetime
 
 from aiohttp import web
-from handlers import cookie2user, COOKIE_NAME
+from handlers import cookie2user, json_default, COOKIE_NAME
 
 async def logger_factory(app, handler):
     async def logger(request):
@@ -86,18 +86,12 @@ async def response_factory(app, handler):
         return resp
     return response
 
-def json_default(obj):
-    if isinstance(obj, datetime.date):
-        return str(obj)
-    else:
-        return obj.__dict__
-
 async def auth_factory(app, handler):
     async def auth(request):
         logging.info('check user: %s %s' % (request.method, request.path))
         request.__user__ = None
         cookie_str = request.cookies.get(COOKIE_NAME)
-        if cookie_str:
+        if cookie_str and not request.path.startswith('/static/'):
             user = await cookie2user(cookie_str)
             if user:
                 logging.info('set current user: %s' % user.id)

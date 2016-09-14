@@ -1,0 +1,110 @@
+{% extends '__base__.html' %}
+
+{% block title %} 修改个人信息 {% endblock %}
+
+{% block beforehead %}
+<script>
+function validateEmail(email) {                                                                                                                                         
+    var re = /^[a-z0-9\.\-\_]+\@[a-z0-9\-\_]+(\.[a-z0-9\-\_]+){1,4}$/;
+    return re.test(email.toLowerCase());
+}
+$(function () {
+    var modify_person_info = new Vue({
+        el: '#modify_person_info',
+        data: {
+            emp_id: '',
+            name: '',
+            sex: '',
+            email: '',
+            phone_number: '',
+            level: '',
+            leader_id: ''
+        },
+        methods: {
+            submit: function(event) {
+                event.preventDefault();
+                var $form = $('#modify_person_info');
+                if (! validateEmail(this.email.trim())) {
+                    return $form.showFormError('请输入正确的email地址');
+                }
+                if (! /^\d{11}$/.test(this.phone_number.trim())) {
+                    return $form.showFormError('请输入正确的11位手机号');
+                }
+                $form.postJSON('/api/modify_person_info', {
+                    email: this.email.trim(),
+                    phone_number: this.phone_number.trim(),
+                }, function (err, r) {
+                    if (err) {
+                        return $form.showFormError(err);
+                    }
+                    UIkit.notify("<i class='uk-icon-check'></i>个人信息修改成功！", {status:'success'});
+                    refresh();
+                });
+            }
+        }
+    });
+    $('#modify_person_info').show();
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="uk-panel uk-container-center uk-margin-large-top">
+    <form id="modify_person_info" v-on="submit: submit" class="uk-form uk-form-horizontal">
+        <legend>修改员工信息</legend>
+        <div class="uk-alert uk-alert-danger uk-hidden"></div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">姓名：</label>
+            <div class="uk-form-controls">
+                <label class="uk-form-label">{{ emp.name }}</label>
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">性别：</label>
+            <div class="uk-form-controls uk-form-controls-text">
+                <label class="uk-form-label">{{ '女' if emp.sex else '男' }}</label>
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">电子邮箱：</label>
+            <div class="uk-form-controls">
+                <input type="email" autocomplete="off" maxlength="50" placeholder="your-name@example.com" value='{{ emp.email}}' v-model="email" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">电话：</label>
+            <div class="uk-form-controls">
+                <input type="text" autocomplete="off" maxlength="50" placeholder="输入电话号码" value='{{ emp.phone_num}}' v-model="phone_number" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">入职日期：</label>
+            <div class="uk-form-controls">
+                <label class="uk-form-label">{{ emp.join_date }}</label>
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">级别：</label>
+            <div class="uk-form-controls">
+                <label class="uk-form-label">{{ emp.level }}</label>
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">入职部门：</label>
+            <div class="uk-form-controls">
+                <label id="dept_number" class="uk-form-label">{{ emp.dno if emp.dno else '无' }}</label>
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">领导编号：</label>
+            <div class="uk-form-controls">
+                <label class="uk-form-label">{{ emp.leader_id if emp.leader_id else '无' }}</label>
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <button type="submit" class="uk-button uk-button-primary">确认</button>
+            <button type="reset" class="uk-button">取消</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
