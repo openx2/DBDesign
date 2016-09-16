@@ -35,7 +35,7 @@ $(function () {
                 }
                 $form.postJSON('/api/delete_employee', {
                     emp_id: this.emp_id.trim(),
-                    emp_name: this.emp_name.trim(),
+                    name: this.emp_name.trim(),
                     leave_date: leave_date
                 }, function (err, r) {
                     if (err) {

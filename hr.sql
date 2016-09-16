@@ -97,3 +97,25 @@ create table attendance (
 		    references employees(`id`),
     primary key (`id`)
 ) engine = innodb default charset=utf8;
+
+-- 在有新员工加入时自动增加部门最新员工编号
+create trigger dept_last_num_increase
+after insert on employees
+for each row
+    update departments set last_num = last_num + 1 where id = new.dno;
+
+create trigger level_to_authority
+before insert on employees
+for each row
+	set new.authority=11-new.level;
+
+delimiter //
+create trigger set_dept_manager
+after insert on employees
+for each row
+    begin
+        if new.level = 3 then
+            update departments set manager_id = new.id where id = new.dno;
+        end if;
+    end //
+delimiter ;

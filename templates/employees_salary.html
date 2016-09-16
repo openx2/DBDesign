@@ -1,0 +1,150 @@
+{% extends 'manage_base.html' %}
+
+{% block title %} 员工工资 {% endblock %}
+
+{% block beforehead %}
+<link rel="stylesheet" href="/static/css/components/notify.gradient.min.css" />
+<link rel="stylesheet" href="/static/css/components/form-select.gradient.min.css" />
+<script src="/static/js/components/form-select.min.js"></script>
+<script src="/static/js/components/notify.min.js"></script>
+<script>
+$(function () {
+    var search = new Vue({
+        el: '#search',
+        data: {
+            emp_id: '',
+            start_year: '',
+            start_month: '',
+            end_year: '',
+            end_month: '',
+        },
+        methods: {
+            submit: function(event) {
+                event.preventDefault();
+                var $form = $('#search');
+                $form.postJSON('/api/query_employees_salary', {
+                    emp_id: this.emp_id.trim(),
+                    start_year: this.start_year.trim(),
+                    start_month: this.start_month.trim(),
+                    end_year: this.end_year.trim(),
+                    end_month: this.end_month.trim(),
+                }, function (err, r) {
+                    if (err) {
+                        return $form.showFormError(err);
+                    }
+                    $form.showFormLoading(false);
+                    refreshTable(r);
+                    UIkit.notify("<i class='uk-icon-check'></i>查询成功！", {status:'success'});
+                    return location.assign('#');
+                });
+            }
+        }
+    });
+    $('#search').show();
+});
+function refreshTable(data) {
+    var vm = new Vue({
+        el: '#vm',
+        data: {
+            payrolls: data.payrolls,
+        },
+    });
+    $('#vm').show();
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="uk-panel uk-panel-box uk-container-center uk-margin-large-top uk-width-1-1">
+    <form id="search" v-on="submit: submit" class="uk-form uk-form-horizontal">
+        <legend>时间区间</legend>
+        <div class="uk-alert uk-alert-danger uk-hidden"></div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">员工编号：</label>
+            <div class="uk-form-controls uk-width-1-1">
+                <input v-model="emp_id" type="text" autocomplete="off" maxlength="50" placeholder="不输入则查找所有员工" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">开始时间：</label>
+            <div class="uk-form-controls">
+                <div class="uk-button uk-form-select uk-active" data-uk-form-select="">
+                    <span>——请选择——</span>
+                    <i class="uk-icon-caret-down"></i>
+                    <select v-model="start_year">
+                        {% for i in range(1990, datetime.date.today().year+1) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                年
+                <div class="uk-button uk-form-select uk-active" data-uk-form-select="">
+                    <span>——请选择——</span>
+                    <i class="uk-icon-caret-down"></i>
+                    <select v-model="start_month">
+                        {% for i in range(1,13) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                月
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">结束时间：</label>
+            <div class="uk-form-controls">
+                <div class="uk-button uk-form-select uk-active" data-uk-form-select="">
+                    <span>——请选择——</span>
+                    <i class="uk-icon-caret-down"></i>
+                    <select v-model="end_year">
+                        {% for i in range(1990, datetime.date.today().year+1) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                年
+                <div class="uk-button uk-form-select uk-active" data-uk-form-select="">
+                    <span>——请选择——</span>
+                    <i class="uk-icon-caret-down"></i>
+                    <select v-model="end_month">
+                        {% for i in range(1,13) %}
+                        <option value="{{ i }}">{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                月
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <button id="search_button" type="submit" class="uk-button uk-button-primary"><i class="uk-icon-search"></i></button>
+        </div>
+    </form>
+    <hr class="uk-article-divider" />
+    <div id="vm" class="uk-width-1-1">
+        <table class="uk-table uk-table-hover">
+            <thead>
+                <tr>
+                    <th>员工编号</th>
+                    <th>姓名</th>
+                    <th>时间</th>
+                    <th>基本工资</th>
+                    <th>奖金</th>
+                    <th>罚款</th>
+                    <th>合计</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-repeat="payroll : payrolls">
+                    <td v-text="payroll['id']"></td>
+                    <td v-text="payroll['name']"></td>
+                    <td v-text="payroll['month']"></td>
+                    <td v-text="payroll['basic_salary']"></td>
+                    <td v-text="payroll['bonus']"></td>
+                    <td v-text="payroll['fine']"></td>
+                    <td v-text="payroll['sum']"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

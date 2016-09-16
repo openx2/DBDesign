@@ -23,6 +23,8 @@ $(function () {
                         return $form.showFormError(err);
                     }
                     refreshTable(r);
+                    $form.showFormLoading(false);
+                    return location.assign('#');
                 });
             }
         }
@@ -38,10 +40,10 @@ $(function () {
             submit: function(event) {
                 event.preventDefault();
                 if (! this.emp_id.trim()) {
-                    UIkit.notify("<i class='uk-icon-times'></i>请输入员工编号", {status: 'danger'});
+                    return UIkit.notify("<i class='uk-icon-times'></i>请输入员工编号", {status: 'danger'});
                 }
                 if (! this.skill_id.trim()) {
-                    UIkit.notify("<i class='uk-icon-times'></i>请输入技能编号", {status: 'danger'});
+                    return UIkit.notify("<i class='uk-icon-times'></i>请输入技能编号", {status: 'danger'});
                 }
                 var $form = $('#operate_emp_skill');
                 $form.postJSON('/api/add_emp_skill', {
@@ -51,6 +53,7 @@ $(function () {
                     if (err) {
                         UIkit.notify("<i class='uk-icon-times'></i>"+err.message, {status: 'danger'});
                     }
+                    UIkit.notify('<i class="uk-icon-check"></i>员工'+r["emp_id"]+'的技能$'+r["skill_id"]+':'+r["skill_name"]+'$添加成功！', {status: 'success'});
                     return location.assign('#');
                 });
             },
@@ -60,7 +63,7 @@ $(function () {
                     return $form.showFormError('请输入员工编号');
                 }
                 if (! this.skill_id.trim()) {
-                    UIkit.notify("<i class='uk-icon-times'></i>请输入技能编号", {status: 'danger'});
+                    return UIkit.notify("<i class='uk-icon-times'></i>请输入技能编号", {status: 'danger'});
                 }
                 var $form = $('#vm');
                 $form.postJSON('/api/delete_emp_skill', {
@@ -68,15 +71,15 @@ $(function () {
                     skill_id: this.skill_id.trim()
                 }, function(err, r) {
                     if (err) {
-                        UIkit.notify("<i class='uk-icon-times'></i>"+err.message, {status: 'danger'});
+                        return UIkit.notify("<i class='uk-icon-times'></i>"+err.message, {status: 'danger'});
                     }
+                    UIkit.notify('<i class="uk-icon-check"></i>删除员工'+r["emp_id"]+'的技能$'+r["skill_id"]+':'+r["skill_name"]+'$成功！', {status: 'success'});
                     return location.assign('#');
                 });
             }
         }
     });
     $('#operate_emp_skill').show();
-    $('#search_button').attr('disabled', false);
 });
 function refreshTable(data) {
     var vm = new Vue({
@@ -110,6 +113,7 @@ function refreshTable(data) {
                         }
                         emp_skill["proficiency"] = val
                         UIkit.notify('<i class="uk-icon-check"></i>修改员工'+r["emp_id"]+'的技能$'+r["skill_id"]+':'+r["skill_name"]+'$熟练度为'+r["proficiency"]+'成功！', {status: 'success'});
+                        return location.assign('#');
                     });
                 });
             }
@@ -165,8 +169,8 @@ function refreshTable(data) {
                 <td v-text="es['skill_name']"></td>
                 <td v-text="es['proficiency']"></td>
                 <td>
-                    <a href="#" v-on="click:modify_emp_skill(es)"><i class="uk-icon-edit"></i></a>
-                    <a href="#" v-on="click:del_emp_skill(es)"><i class="uk-icon-trash-o"></i></a>
+                    <a href="#" v-on="click:modify_emp_skill(es)"><i class="uk-icon-hover uk-icon-edit"></i></a>
+                    <a href="#" v-on="click:del_emp_skill(es)"><i class="uk-icon-hover uk-icon-trash-o"></i></a>
                 </td>
             </tr>
         </tbody>

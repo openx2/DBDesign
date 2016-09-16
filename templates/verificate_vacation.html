@@ -1,0 +1,103 @@
+{% extends '__base__.html' %}
+
+{% block title %} 确认请假 {% endblock %}
+
+{% block beforehead %}
+<link rel="stylesheet" href="/static/css/components/form-select.gradient.min.css" />
+<link rel="stylesheet" href="/static/css/components/datepicker.gradient.min.css" />
+<link rel="stylesheet" href="/static/css/components/notify.gradient.min.css" />
+<script src="/static/js/components/form-select.min.js"></script>
+<script src="/static/js/components/datepicker.min.js"></script>
+<script src="/static/js/components/notify.min.js"></script>
+<script>
+$(function () {
+    var verificate_vacation = new Vue({
+        el: '#verificate_vacation',
+        data: {
+            subordinate_id: '',
+            start_time_period: '',
+            end_time_period: '',
+        },
+        methods: {
+            submit: function(event) {
+                event.preventDefault();
+                var
+                    $form = $('#verificate_vacation'),
+                    start_time = $('#start_time').val(),
+                    end_time = $('#end_time').val();
+                if (! this.subordinate_id.trim()) {
+                    return $form.showFormError('请输入下属编号');
+                }
+                if (! start_time || ! this.start_time_period.trim()) {
+                    return $form.showFormError('请输入开始日期');
+                }
+                if (! end_time || ! this.end_time_period.trim()) {
+                    return $form.showFormError('请输入结束日期');
+                }
+                $form.postJSON('/api/verificate_vacation', {
+                    sub_id: this.subordinate_id.trim(),
+                    start_time: start_time,
+                    start_time_period: this.start_time_period,
+                    end_time: end_time,
+                    end_time_period: this.end_time_period,
+                }, function (err, r) {
+                    if (err) {
+                        return $form.showFormError(err);
+                    }
+                    UIkit.notify("<i class='uk-icon-check'></i>下属假期批准成功！", {status:'success'});
+                    return location.assign('#');
+                });
+            }
+        }
+    });
+    $('#verificate_vacation').show();
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="uk-grid uk-container-center uk-margin-large-top">
+    <form id="verificate_vacation" v-on="submit: submit" class="uk-form uk-form-horizontal">
+        <legend>批准假期</legend>
+        <div class="uk-alert uk-alert-danger uk-hidden"></div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">下属编号：</label>
+            <div class="uk-form-controls">
+                <input v-model="subordinate_id" type="text" autocomplete="off" maxlength="50" placeholder="输入下属编号" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">开始时间：</label>
+            <div class="uk-form-controls">
+                <input id="start_time" type="" readonly="readonly" data-uk-datepicker="{weekstart:0, format:'YYYY-MM-DD'}" placeholder="YYYY-MM-DD"/>
+                <div class="uk-button uk-form-select uk-active" data-uk-form-select="">
+                    <span>——请选择——</span>
+                    <i class="uk-icon-caret-down"></i>
+                    <select v-model="start_time_period">
+                        <option value="am">上午</option>
+                        <option value="pm">下午</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">结束时间：</label>
+            <div class="uk-form-controls">
+                <input id="end_time" type="" readonly="readonly" data-uk-datepicker="{weekstart:0, format:'YYYY-MM-DD'}" placeholder="YYYY-MM-DD"/>
+                <div class="uk-button uk-form-select uk-active" data-uk-form-select="">
+                    <span>——请选择——</span>
+                    <i class="uk-icon-caret-down"></i>
+                    <select v-model="end_time_period">
+                        <option value="am">上午</option>
+                        <option value="pm">下午</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <button type="submit" class="uk-button uk-button-primary">确认</button>
+            <button type="reset" class="uk-button">取消</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

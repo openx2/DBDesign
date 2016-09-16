@@ -1,0 +1,52 @@
+{% extends '__base__.html' %}
+
+{% block title %} 欢迎 {% endblock %}
+
+{% block beforehead %}
+<link rel="stylesheet" href="/static/css/components/slidenav.gradient.min.css">
+<link rel="stylesheet" href="/static/css/components/dotnav.gradient.min.css">
+<link rel="stylesheet" href="/static/css/components/slideshow.gradient.min.css">
+<script src="/static/js/components/slideshow.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="uk-grid uk-width-1-1 uk-margin-large-top">
+	<article class="uk-article uk-width-1-2">
+        <h1>公司近况</h1>
+        <hr class="uk-article-divider" />
+		<div class="uk-slidenav-position" data-uk-slideshow="{autoplay:true, animation: 'scale', pauseOnHover: true, duration: 500, autoplayInterval: 5000, kenburns: false}">
+			<ul class="uk-slideshow uk-overlay-active">
+				<li><a href="#"><img src="/static/img/website1.jpe" width="700" height="450" alt="demo" /></a></li>
+				<li><a href="#"><img src="/static/img/website2.jpe" width="700" height="450" alt="demo" /></a></li>
+				<li><a href="#"><img src="/static/img/website3.jpe" width="700" height="450" alt="demo" /></a></li>
+			</ul>
+
+			<ul class="uk-dotnav uk-dotnav-contrast uk-position-bottom uk-flex-center">
+				<li data-uk-slideshow-item="0"><a href=""></a></li>
+                <li data-uk-slideshow-item="1"><a href=""></a></li>
+                <li data-uk-slideshow-item="2"><a href=""></a></li>
+            </ul>
+
+            <a href="" class="uk-slidenav uk-slidenav-previous" data-uk-slideshow-item="previous"></a>
+            <a href="" class="uk-slidenav uk-slidenav-next" data-uk-slideshow-item="next"></a>
+        </div>
+    </article>
+    <article class="uk-article uk-width-1-2 uk-margin-top-remove uk-padding-top-remove" style="border:none;">
+        <h1>近期目标</h1>
+        <hr class="uk-article-divider" />
+        <div class="uk-panel uk-panel-box uk-panel-box-primary uk-text-center">
+            <ul class="uk-list uk-list-line uk-list-space">
+                <li><a class="uk-link-muted" href="#">一个小目标</a></li>
+                <li><a class="uk-link-muted" href="#">一个小目标</a></li>
+                <li><a class="uk-link-muted" href="#">一个小目标</a></li>
+                <li><a class="uk-link-muted" href="#">一个小目标</a></li>
+                <li><a class="uk-link-muted" href="#">一个小目标</a></li>
+                <li><a class="uk-link-muted" href="#">一个小目标</a></li>
+                <li><a class="uk-link-muted" href="#">一个小目标</a></li>
+                <li><a class="uk-link-muted" href="#"><del class="uk-text-muted">一个小目标</del></a></li>
+                <li><a class="uk-link-muted" href="#"><del class="uk-text-muted">一个小目标</del></a></li>
+            </ul>
+        </div>
+	</article>
+</div>
+{% endblock %}

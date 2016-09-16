@@ -13,67 +13,6 @@
     <script src="/static/js/vue.min.js"></script>
     <script src="/static/js/awesome.js"></script>
     <script src="/static/js/components/notify.min.js"></script>
-    <script>
-    $(function () {
-        var change_password = new Vue({
-            el: '#change_password',
-            data: {
-                origin_pwd: '',
-                new_pwd: '',
-                new_pwd_repeat: ''
-            },
-            methods: {
-                change_password: function () {
-                    if (this.new_pwd.length < 6) {
-                        return UIkit.notify('<i class="uk-icon-times"></i>口令长度至少为6个字符', {status:'danger'});
-                    }
-                    if (this.new_pwd != this.new_pwd_repeat) {
-                        return UIkit.notify('<i class="uk-icon-times"></i>两次输入的口令不一致', {status:'danger'});
-                    }
-                    postJSON('/api/change_password',{
-                        origin_password: this.origin_pwd,
-                        password: this.new_pwd
-                    },function (err, r) {
-                        if (err) {
-                            return UIkit.notify('<i class="uk-icon-times"></i>'+err.message, {status:'danger'});
-                        }
-                        UIkit.notify('<i class="uk-icon-check"></i>密码修改成功！', {status:'success'});
-                        change_password.origin_pwd = '', change_password.new_pwd = '', change_password.new_pwd_repeat = '';
-                        return location.assign('#');
-                    });
-                }
-            }
-        });
-        var sign = new Vue({
-            el: '#sign',
-            methods: {
-                come: function () {
-                    postJSON('/api/employee_come', {},
-                        function (err, r) {
-                            if(err) {
-                                return UIkit.notify('<i class="uk-icon-times"></i>'+err.message, {status:'danger'});
-                            }
-                            UIkit.notify('<i class="uk-icon-check"></i>签到成功！', {status:'success'});
-                            return location.assign('#');
-                        }
-                    );
-                },
-
-                leave: function () {
-                    postJSON('/api/employee_leave', {},
-                        function (err, r) {
-                            if(err) {
-                                return UIkit.notify('<i class="uk-icon-times"></i>'+err.message, {status:'danger'});
-                            }
-                            UIkit.notify('<i class="uk-icon-check"></i>签离成功！', {status:'success'});
-                            return location.assign('#');
-                        }
-                    );
-                }
-            }
-        });
-    });
-    </script>
     {% block beforehead %}<!-- before head  -->{% endblock %}
 </head>
 
@@ -151,5 +90,66 @@
         </div>
     </div>
 
+    <script>
+    $(function () {
+        var change_password = new Vue({
+            el: '#change_password',
+            data: {
+                origin_pwd: '',
+                new_pwd: '',
+                new_pwd_repeat: ''
+            },
+            methods: {
+                change_password: function () {
+                    if (this.new_pwd.length < 6) {
+                        return UIkit.notify('<i class="uk-icon-times"></i>口令长度至少为6个字符', {status:'danger'});
+                    }
+                    if (this.new_pwd != this.new_pwd_repeat) {
+                        return UIkit.notify('<i class="uk-icon-times"></i>两次输入的口令不一致', {status:'danger'});
+                    }
+                    postJSON('/api/change_password',{
+                        origin_password: this.origin_pwd,
+                        password: this.new_pwd
+                    },function (err, r) {
+                        if (err) {
+                            return UIkit.notify('<i class="uk-icon-times"></i>'+err.message, {status:'danger'});
+                        }
+                        UIkit.notify('<i class="uk-icon-check"></i>密码修改成功！', {status:'success'});
+                        change_password.origin_pwd = '', change_password.new_pwd = '', change_password.new_pwd_repeat = '';
+                        return location.assign('#');
+                    });
+                }
+            }
+        });
+        var sign = new Vue({
+            el: '#sign',
+            methods: {
+                come: function () {
+                    postJSON('/api/employee_come', {},
+                        function (err, r) {
+                            if(err) {
+                                return UIkit.notify('<i class="uk-icon-times"></i>'+err.message, {status:'danger'});
+                            }
+                            UIkit.notify('<i class="uk-icon-check"></i>签到成功！', {status:'success'});
+                            return location.assign('#');
+                        }
+                    );
+                },
+
+                leave: function () {
+                    postJSON('/api/employee_leave', {},
+                        function (err, r) {
+                            if(err) {
+                                return UIkit.notify('<i class="uk-icon-times"></i>'+err.message, {status:'danger'});
+                            }
+                            UIkit.notify('<i class="uk-icon-check"></i>签离成功！', {status:'success'});
+                            return location.assign('#');
+                        }
+                    );
+                }
+            }
+        });
+    });
+    </script>
 </body>
 </html>

@@ -63,9 +63,10 @@ async def response_factory(app, handler):
             else:
                 r['__user__'] = request.__user__
                 #如果有'__template__'为key的值，则说明要使用jinja2的模板，template就是模板的名字
+                template_instance = app['__templating__'].get_template(template)
+                template_instance.globals['datetime'] = datetime
                 resp = web.Response(
-                    body=app['__templating__'].get_template(template).
-                                            render(**r).encode('utf-8')
+                    body=template_instance.render(**r).encode('utf-8')
                 )
                 resp.content_type = 'text/html;charset=utf-8'
                 #以html的形式返回

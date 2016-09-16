@@ -3,20 +3,22 @@
 
 __author__ = 'cx'
 
-import hashlib, json, time, datetime, logging
 import pdb
+import hashlib, json, time, logging, calendar
+from datetime import datetime, date, timedelta
 
 from aiohttp import web
-import pymysql
 
+import orm
 from apis import APIError, APIValueError, APIPermissionError, APIResourceNotFoundError
 from coroweb import get, post
 from models import Employee, Department, LevelSalary, Skill, EmpSkill, Attendance, EmpBonusFine
+from attendanceManagement import NORMAL, LEAVE_EARLY, OVERDUE, ABSENCE_FROM_DUTY, HAS_VACATED
 
 @get('/')
 def index():
     return {
-        '__template__' : '__base__.html'
+        '__template__' : 'employee_index.html'
     }
 
 @get('/signin')
@@ -35,9 +37,32 @@ def signout():
 @get('/personal_info')
 async def get_personal_info(request):
     user = request.__user__
+    global __level_name
+    if __level_name is None:
+        level_name_list = await LevelSalary.findAll()
+        __level_name = {ln['level']:ln['name'] for ln in level_name_list}
+    user['level_name'] = __level_name[user.level]
     return {
         '__template__': 'personal_info.html',
         'emp': user
+    }
+
+@get('/verificate_vacation')
+def verificate_vacation():
+    return {
+        '__template__': 'verificate_vacation.html',
+    }
+
+@get('/determine_bonuses')
+def determine_bonuses():
+    return {
+        '__template__': 'determine_bonuses.html',
+    }
+
+@get('/query_salary')
+def query_salary():
+    return {
+        '__template__': 'query_salary.html',
     }
 
 @get('/manage/')
@@ -106,6 +131,24 @@ def manage_modify_department_info():
         '__template__' : 'manage_modify_department_info.html'
     }
 
+@get('/manage/employees_salary')
+def manage_employees_salary():
+    return {
+        '__template__' : 'employees_salary.html'
+    }
+
+@get('/manage/employees_dept')
+def manage_employees_dept():
+    return {
+        '__template__' : 'employees_dept.html'
+    }
+
+@get('/manage/employees_attendance')
+def manage_employees_attendance():
+    return {
+        '__template__' : 'employees_attendance.html'
+    }
+
 @get('/manage/hide')
 def hide():
     return {
@@ -119,11 +162,14 @@ DEPT_MANAGER_LEVEL = 3
 COOKIE_NAME = 'hr_dbdesign'
 _COOKIE_KEY = 'software academy'
 __skills = None
+__level_name = None
+__status = { NORMAL: '正常', LEAVE_EARLY: '早退', OVERDUE: '迟到',
+            ABSENCE_FROM_DUTY: '缺勤', HAS_VACATED: '请假' }
 
 def json_default(obj):
-    if isinstance(obj, datetime.date):
+    if isinstance(obj, date):
         return str(obj)
-    elif isinstance(obj, datetime.datetime):
+    elif isinstance(obj, datetime):
         return str(obj)
     else:
         return obj.__dict__
@@ -187,6 +233,9 @@ async def validateDeptAndLeader(dept_num, leader_id, level):
             raise APIValueError('leader', '该领导不存在')
         if level + 1 != leader.level:
             raise APIValueError('leader', '该领导无法成为新员工的直属上司')
+        if level == DEPT_MANAGER_LEVEL and \
+        (await Employee.findAll('`level`=? and dno=?', [level,dept_num])) != []:
+            raise APIValueError('duplicate department manager', '已经存在部门经理')
     if is_general_manager and dept_num:
         raise APIValueError('department', '总经理不应该有部门编号')
     if is_general_manager and leader_id:
@@ -208,9 +257,47 @@ async def getEmployeeID(join_date,dept_num):
     return first_part+second_part+third_part
 
 def getAttendanceID(dt, emp_id):
-    date = datetime.datetime.strftime(dt,'%Y%m%d')
+    date = datetime.strftime(dt,'%Y%m%d')
     time_period = 'am' if dt.hour < 12 else 'pm'
     return date+time_period+emp_id
+
+async def isSubordinate(leader, sub_id):
+    if leader.id == sub_id:
+        return False
+    subordinate = await Employee.find(sub_id)
+    if not subordinate:
+        raise APIValueError('sub_id', '该下属不存在，请检查编号！')
+    if leader.level == GENERAL_MANAGER_LEVEL:
+        return True
+    if leader.level == DEPT_MANAGER_LEVEL and leader.dno == subordinate.dno:
+        return True
+    if subordinate.leader_id == leader.id:
+        return True
+    return False
+
+async def adjustAttendanceRecord(emp_id, vertifier_id, dt):
+    id=getAttendanceID(dt, emp_id)
+    attendance = await Attendance.find(id)
+    if attendance:
+        attendance.has_vacated = True
+        attendance.vertifier_id = vertifier_id
+        await attendance.update()
+    else:
+        attendance = Attendance(id=id, emp_id=emp_id,
+                                in_time=None, out_time=None, has_vacated=True,
+                                vertifier_id=vertifier_id, status=None)
+        await attendance.save()
+
+async def adjustTime(user_id, sub_id, date, time_period, isStartTime):
+    if isStartTime and time_period == 'pm':
+        await adjustAttendanceRecord(sub_id, user_id,
+                               date+timedelta(hours=13))
+    if not isStartTime and time_period == 'am':
+        await adjustAttendanceRecord(sub_id, user_id,
+                               date+timedelta(hours=7))
+    if time_period == 'pm':
+        date += timedelta(days=1)
+    return date
 
 @post('/api/authenticate')
 async def authenticate(*, id, password):
@@ -298,7 +385,7 @@ async def deleteEmployee(*, emp_id, name, leave_date):
     if (await Employee.findNumber('count(`id`)', '`leader_id`=?', [emp_id])) != 0:
         raise APIValueError('emp_id', '该员工还有下属，请先修改所有下属的上司！')
     validateDate(leave_date)
-    if datetime.date(*time.strptime(leave_date, '%Y-%m-%d')[:3]) < emp.join_date:
+    if date(*time.strptime(leave_date, '%Y-%m-%d')[:3]) < emp.join_date:
         raise APIValueError('leave_date', '员工入职日期大于离职日期！')
     #设置员工的离职日期
     emp.leave_date = leave_date
@@ -323,7 +410,7 @@ async def changePosition(*, emp_id, name, change_date, level, dept_number,
         raise APIValueError('emp_id', '该员工的姓名与你的输入不一致，请检查你的输入！')
     if (await Employee.findNumber('count(`id`)', '`leader_id`=?', [emp_id])) != 0:
         raise APIValueError('emp_id', '该员工还有下属，请先修改所有下属的上司！')
-    if datetime.date(*time.strptime(change_date, '%Y-%m-%d')[:3]) < emp.join_date:
+    if date(*time.strptime(change_date, '%Y-%m-%d')[:3]) < emp.join_date:
         raise APIValueError('change_date', '员工入职日期大于调职日期！')
     #将员工原先的记录中的离职日期改为调值日期
     emp.leave_date = change_date
@@ -368,7 +455,9 @@ async def modifyEmployeeInfo(*, emp_id, name, sex, email, phone_number, join_dat
     try:
         await validateDeptAndLeader(dept_number, leader_id, level)
     except APIValueError as e:
-        if e.data != 'duplicate general manager' or emp.level != 4:
+        if (e.data != 'duplicate general manager' or emp.level !=\
+            GENERAL_MANAGER_LEVEL) and (e.data != 'duplicate department\
+                            manager' or emp.level != DEPT_MANAGER_LEVEL):
             raise e
     emp.id = (await getEmployeeID(join_date, dept_number))
     emp.name = name.strip()
@@ -385,7 +474,7 @@ async def modifyEmployeeInfo(*, emp_id, name, sex, email, phone_number, join_dat
     return emp
 
 @post('/api/search_emp_skills')
-async def search_emp_skills(*, emp_id):
+async def searchEmpSkills(*, emp_id):
     global __skills
     if not __skills:
         skills_list = await Skill.findAll()
@@ -399,18 +488,19 @@ async def search_emp_skills(*, emp_id):
     return dict(emp_skills=emp_skills)
 
 @post('/api/add_emp_skill')
-async def add_emp_skill(*, emp_id, skill_id):
+async def addEmpSkill(*, emp_id, skill_id):
     emp_skill = await EmpSkill.findAll('`emp_id`=? and `skill_id`=?', [emp_id, skill_id])
     if len(emp_skill) != 0:
         raise APIValueError('duplicate record in emp_skills',
                                             '员工技能对照表中已经有了这条记录')
     emp_skill = EmpSkill(emp_id=emp_id, skill_id=skill_id, proficiency=1)
     await emp_skill.save()
+    emp_skill['skill_name'] = __skills[emp_skill['skill_id']]
     logging.info('add emp_skill %s' % emp_skill)
     return emp_skill
 
 @post('/api/modify_emp_skill/{id}')
-async def modify_emp_skill(id, *, proficiency):
+async def modifyEmpSkill(id, *, proficiency):
     emp_skill = await EmpSkill.find(id)
     if not emp_skill:
         raise APIValueError('emp_skill', '找不到该条员工技能记录')
@@ -421,7 +511,7 @@ async def modify_emp_skill(id, *, proficiency):
     return emp_skill
 
 @post('/api/delete_emp_skill')
-async def delete_emp_skill(*, emp_id, skill_id):
+async def deleteEmpSkill(*, emp_id, skill_id):
     emp_skill = await EmpSkill.findAll('`emp_id`=? and `skill_id`=?', [emp_id, skill_id])
     if not emp_skill:
         raise APIValueError('emp_skill', '找不到该条员工技能记录')
@@ -431,7 +521,7 @@ async def delete_emp_skill(*, emp_id, skill_id):
     return emp_skill
 
 @post('/api/delete_emp_skill/{id}')
-async def delete_emp_skill_by_id(id):
+async def deleteEmpSkillByID(id):
     emp_skill = await EmpSkill.find(id)
     if not emp_skill:
         raise APIValueError('emp_skill', '找不到该条员工技能记录')
@@ -441,7 +531,7 @@ async def delete_emp_skill_by_id(id):
     return emp_skill
 
 @post('/api/add_department')
-async def add_department(*, id, name):
+async def addDepartment(*, id, name):
     if not id:
         raise APIValueError('dept_id', 'Invaild department ID')
     if (await Department.find(id)):
@@ -454,7 +544,7 @@ async def add_department(*, id, name):
     return dept
 
 @post('/api/delete_department')
-async def delete_department(*, id, name):
+async def deleteDepartment(*, id, name):
     if not id:
         raise APIValueError('dept_id', 'Invaild department ID')
     if not name:
@@ -501,32 +591,197 @@ async def modifyDepartmentInfo(*, id, name, manager_id):
     logging.info('modify department %s' % dept)
     return dept
 
-@post('/api/employee_come')
-async def employee_come(request):
+@post('/api/query_employees_salary')
+async def queryEmployeesSalary(*, emp_id, start_year, start_month, end_year,
+                                                                     end_month):
+    sql = ['select emp.id, emp.name, month, basic_salary, bonus, fine \
+           from employees emp, level_salary ls, emp_bonuses_fines ebf \
+where emp.level = ls.level and emp.id = ebf.emp_id and emp.leave_date is null']
+    args = []
+    if any([start_year, start_month]) and not all([start_year, start_month]):
+        raise APIValueError('start date', '开始年与开始月不能只有1个为空')
+    if any([end_year, end_month]) and not all([end_year, end_month]):
+        raise APIValueError('end date', '结束年与结束月不能只有1个为空')
+    if emp_id:
+        sql.append('and emp.id=?')
+        args.append(emp_id)
+    if all([start_year, start_month]):
+        start_day = str(calendar.monthrange(int(start_year),int(start_month))[1])
+        sql.append('and month>=?')
+        args.append(start_year+'-'+start_month+'-'+start_day)
+    if all([end_year, end_month]):
+        end_day = str(calendar.monthrange(int(end_year),int(end_month))[1])
+        sql.append('and month<=?')
+        args.append(end_year+'-'+end_month+'-'+end_day)
+    rs = await orm.select(' '.join(sql), args)
+    payrolls = [{'id':r['id'], 'name':r['name'], 'bonus': r['bonus'],
+                 'fine':r['fine'], 'month': datetime.strftime(r['month'], '%Y-%m'),
+                 'basic_salary': r['basic_salary'],
+                 'sum': r['basic_salary']+r['bonus']+r['fine']} for r in rs]
+    return dict(payrolls=payrolls)
+
+@post('/api/query_employees_dept')
+async def queryEmployeesDept(*, dept_id):
+    sql = ['select emp.id emp_id, emp.name emp_name, sex, email, phone_num,\
+               join_date, level, leader_id, dept.name dept_name, manager_id\
+                                       from employees emp, departments dept\
+                    where emp.dno = dept.id and emp.leave_date is null']
+    args = []
+    if dept_id:
+        sql.append('and dept_id=?')
+        args.append(dept_id)
+    global __level_name
+    if __level_name is None:
+        level_name_list = await LevelSalary.findAll()
+        __level_name = {ln['level']:ln['name'] for ln in level_name_list}
+    rs = await orm.select(' '.join(sql), args)
+    emp_infos = [{'emp_id':r['emp_id'], 'emp_name':r['emp_name'],
+                                      'sex': '女' if r['sex'] else '男',
+                          'email': r['email'], 'phone_num': r['phone_num'],
+              'level_name':__level_name[r['level']], 'leader_id': r['leader_id'],
+         'dept_name': r['dept_name'], 'manager_id': r['manager_id']} for r in rs]
+    #如果没有指定部门编号，可以显示总经理
+    if not dept_id:
+        gm = (await Employee.findAll('`level`=?', [GENERAL_MANAGER_LEVEL]))[0]
+        emp_infos.append({'emp_id': gm.id, 'emp_name': gm.name,
+                          'email': gm.email, 'phone_num': gm.phone_num,
+                          'sex':'女' if gm.sex else '男',
+                          'level_name': __level_name[gm.level],
+                          'leader_id':'无', 'dept_name':'无', 'manager_id':'无'})
+    return dict(emp_infos=emp_infos)
+
+@post('/api/query_employees_attendance')
+async def queryEmployeesAttendance(*, emp_id):
+    sql = ['select emp.id, emp.name emp_name, in_time, out_time,\
+                                       has_vacated, vertifier_id, status\
+                                        from employees emp, attendance atd\
+                        where emp.id = atd.emp_id and emp.leave_date is null']
+    args = []
+    if emp_id:
+        sql.append('and emp_id=?')
+        args.append(emp_id)
+    rs = await orm.select(' '.join(sql), args)
+    emp_atds = [{'emp_id':r['id'], 'emp_name':r['emp_name'],
+'in_time': r['in_time'].strftime('%Y-%m-%d %H:%M:%S') if r['in_time'] else '无',
+'out_time': r['out_time'].strftime('%Y-%m-%d %H:%M:%S') if r['out_time'] else '无',
+                        'has_vacated': '是' if r['has_vacated'] else '否',
+                                 'vertifier_id':r.get('vertifier_id', '无'),
+        'status': __status[r['status']] if r['status'] else '未知'} for r in rs]
+    return dict(emp_atds=emp_atds)
+
+@post('/api/modify_person_info')
+async def modifyPersonInfo(request, *, email, phone_number):
     user = request.__user__
     if not user:
-        raise APIPermissionError('user', '该用户不存在！')
-    now = datetime.datetime.now()
-    attendance = Attendance(id=getAttendanceID(now, user.id), emp_id=user.id,
-                            in_time=str(now), out_time=None, has_vacated=False,
-                                           vertifier_id=None, status=None)
-    try:
-        await attendance.save()
-    except pymysql.err.IntegrityError as e:
-        if e.errno == 1062:
-            raise APIValueError('user', '您已经签到完成！')
+        raise APIPermissionError('该员工不存在！')
+    emp = await Employee.find(user.id)
+    emp.email = email
+    emp.phone_num = phone_number
+    await emp.update()
+    logging.info('update employee: %s' % emp)
+    #信息修改完毕，将更新后的职员作为json返回
+    return emp
+
+@post('/api/employee_come')
+async def employeeCome(request):
+    user = request.__user__
+    if not user:
+        raise APIPermissionError('该员工不存在！')
+    now = datetime.now()
+    attendance = await Attendance.find(getAttendanceID(now, user.id))
+    if attendance.in_time:
+        raise APIValueError('user', '您已经签到完成！')
+    attendance.in_time = str(now)
+    await attendance.update()
     return attendance
 
 @post('/api/employee_leave')
-async def employee_leave(request):
+async def employeeLeave(request):
     user = request.__user__
     if not user:
-        raise APIPermissionError('user', '该用户不存在！')
-    now = datetime.datetime.now()
+        raise APIPermissionError('该员工不存在！')
+    now = datetime.now()
     id=getAttendanceID(now, user.id)
     attendance = await Attendance.find(id)
-    if not attendance:
+    if not attendance.in_time:
         raise APIValueError('attendance', '您还未签到！')
+    if attendance.out_time:
+        raise APIValueError('user', '您已经签离完成！')
     attendance.out_time = str(now)
     await attendance.update()
     return attendance
+
+@post('/api/verificate_vacation')
+async def verificateVacation(request, *, sub_id, start_time,
+                              start_time_period, end_time, end_time_period):
+    user = request.__user__
+    if not user:
+        raise APIPermissionError('该员工不存在！')
+    if not (await isSubordinate(user, sub_id)):
+        raise APIPermissionError('该员工不是你的下属！')
+    start_date = datetime.strptime(start_time, '%Y-%m-%d')
+    end_date = datetime.strptime(end_time, '%Y-%m-%d')
+    if start_date > end_date or (start_date == end_date and start_time_period\
+                                         == 'pm' and end_time_period == 'am'):
+        raise APIValueError('time', '开始时间不能大于结束时间')
+    start_date = await adjustTime(user.id, sub_id, start_date, start_time_period,
+                                                                          True)
+    end_date = await adjustTime(user.id, sub_id, end_date, end_time_period,
+                                                                        False)
+    #从开始日期的早上7点开始调整对应记录
+    start_date += timedelta(hours=7)
+    while start_date < end_date:
+        await adjustAttendanceRecord(sub_id, user.id, start_date)
+        start_date += timedelta(hours=4)
+        await adjustAttendanceRecord(sub_id, user.id, start_date)
+        start_date += timedelta(hours=20)
+    return user
+
+@post('/api/determine_bonuses')
+async def determineBonuses(request, *, sub_id, bonus):
+    user = request.__user__
+    if not user:
+        raise APIPermissionError('该员工不存在！')
+    if not (await isSubordinate(user, sub_id)):
+        raise APIPermissionError('该员工不是你的下属！')
+    today = date.today()
+    last_month = date(today.year, today.month, 1) - timedelta(days=1)
+    last_month_str = datetime.strftime(last_month, '%Y-%m-%d')
+    ebfs = await EmpBonusFine.findAll('`emp_id`=? and `month`=?', [sub_id,
+                                                              last_month_str])
+    if len(ebfs) == 0:
+        raise APIResourceNotFoundError('emp_bonuses_fines',
+                                   '记录尚未建立，请等待一段时间')
+    if len(ebfs) > 1:
+        raise APIError('system error', 'emp_bonuses_fines', '系统内部出现故障')
+    ebf = ebfs[0]
+    if ebf.bonus:
+        raise APIPermissionError('该员工的奖金已被确定！')
+    ebf.bonus = bonus
+    await ebf.update()
+    return ebf
+
+@post('/api/query_salary')
+async def querySalary(request, *, start_year, start_month, end_year, end_month):
+    user = request.__user__
+    if not user:
+        raise APIPermissionError('该员工不存在！')
+    if start_year > end_year or (start_year == end_year and\
+                                            int(start_month) > int(end_month)):
+        raise APIValueError('date', '开始日期大于结束日期！')
+    start_day = str(calendar.monthrange(int(start_year),int(start_month))[1])
+    end_day = str(calendar.monthrange(int(end_year),int(end_month))[1])
+    ebfs = await EmpBonusFine.findAll('`emp_id`=? and `month`>=? and `month`<=?',
+                          [user.id, start_year+'-'+start_month+'-'+start_day,
+                                           end_year+'-'+end_month+'-'+end_day])
+    if len(ebfs) == 0:
+        raise APIValueError('month', '不存在符合条件的工资记录！')
+    #如果最近一个月的奖金还未被领导确定
+    if ebfs[-1].bonus is None:
+        ebfs = ebfs[:-1]
+    if len(ebfs) == 0:
+        raise APIValueError('month', '不存在符合条件的工资记录！')
+    basic_salary = (await LevelSalary.find(user.level)).basic_salary
+    payrolls = [{'month':e.month.strftime('%Y-%m'), 'bonus': e.bonus,\
+                'fine': e.fine, 'sum': basic_salary+e.bonus+e.fine} for e in ebfs]
+    return dict(basic_salary=basic_salary, payrolls=payrolls)

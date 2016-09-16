@@ -1,0 +1,91 @@
+{% extends 'manage_base.html' %}
+
+{% block title %} 员工出勤 {% endblock %}
+
+{% block beforehead %}
+<link rel="stylesheet" href="/static/css/components/notify.gradient.min.css" />
+<script src="/static/js/components/notify.min.js"></script>
+<script>
+$(function () {
+    var search = new Vue({
+        el: '#search',
+        data: {
+            emp_id: '',
+        },
+        methods: {
+            submit: function(event) {
+                event.preventDefault();
+                var $form = $('#search');
+                $form.postJSON('/api/query_employees_attendance', {
+                    emp_id: this.emp_id.trim(),
+                }, function (err, r) {
+                    if (err) {
+                        return $form.showFormError(err);
+                    }
+                    $form.showFormLoading(false);
+                    refreshTable(r);
+                    UIkit.notify("<i class='uk-icon-check'></i>查询成功！", {status:'success'});
+                    return location.assign('#');
+                });
+            }
+        }
+    });
+    $('#search').show();
+});
+function refreshTable(data) {
+    var vm = new Vue({
+        el: '#vm',
+        data: {
+            emp_atds: data.emp_atds,
+        },
+    });
+    $('#vm').show();
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="uk-panel uk-panel-box uk-container-center uk-margin-large-top uk-width-1-1">
+    <form id="search" v-on="submit: submit" class="uk-form uk-form-horizontal">
+        <legend>员工出勤情况</legend>
+        <div class="uk-alert uk-alert-danger uk-hidden"></div>
+        <div class="uk-form-row">
+            <label class="uk-form-label">员工编号：</label>
+            <div class="uk-form-controls uk-width-1-1">
+                <input v-model="emp_id" type="text" autocomplete="off" maxlength="50" placeholder="不输入则查找所有员工" />
+            </div>
+        </div>
+        <div class="uk-form-row">
+            <button id="search_button" type="submit" class="uk-button uk-button-primary"><i class="uk-icon-search"></i></button>
+        </div>
+    </form>
+    <hr class="uk-article-divider" />
+    <div id="vm" class="uk-width-1-1">
+        <table class="uk-table uk-table-hover">
+            <thead>
+                <tr>
+                    <th>员工编号</th>
+                    <th>姓名</th>
+                    <th>签到时间</th>
+                    <th>签离时间</th>
+                    <th>是否请假</th>
+                    <th>批准人编号</th>
+                    <th>状态</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-repeat="emp_atd : emp_atds">
+                    <td v-text="emp_atd['emp_id']"></td>
+                    <td v-text="emp_atd['emp_name']"></td>
+                    <td v-text="emp_atd['in_time']"></td>
+                    <td v-text="emp_atd['out_time']"></td>
+                    <td v-text="emp_atd['has_vacated']"></td>
+                    <td v-text="emp_atd['vertifier_id']"></td>
+                    <td v-text="emp_atd['status']"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+

@@ -41,7 +41,7 @@ $(function () {
                     modify_employee_info.phone_number = r["phone_num"];
                     $("#join_date").val(r["join_date"]);
                     modify_employee_info.level = r["level"].toString();
-                    $("#level_text").html($("option[value='"+r["level"]+"']").html());
+                    $("#level_name").html($("option[value='"+r["level"]+"']").html());
                     if (r["dno"]) {
                         $("#dept_number").html(r["dno"]);
                     }
@@ -164,7 +164,7 @@ $(function () {
             <label class="uk-form-label">级别：</label>
             <div class="uk-form-controls">
                 <div class="uk-button uk-form-select uk-active" data-uk-form-select="">
-                    <span id="level_text">——请选择——</span>
+                    <span id="level_name">——请选择——</span>
                     <i class="uk-icon-caret-down"></i>
                     <select id="level" v-model="level">
                         <option value="4">总经理</option>

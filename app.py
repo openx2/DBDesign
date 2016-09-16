@@ -6,12 +6,13 @@
 #导入日志包,并设置输出日志的级别为INFO
 import logging; logging.basicConfig(level=logging.INFO)
 
-import asyncio, time, os
+import asyncio, os, datetime
 
 from aiohttp import web
 from jinja2 import Environment, FileSystemLoader
 
 import orm
+from attendanceManagement import attendance_manage
 from coroweb import add_routes, add_static
 from middlewares import logger_factory, response_factory, auth_factory, redirect_factory
 
@@ -67,7 +68,9 @@ async def init(loop):
     return rs
 
 if __name__ == '__main__':
+    #启动出勤管理服务
     loop = asyncio.get_event_loop()
+    attendance_manage(loop)
     rs = loop.run_until_complete(init(loop))
     try:
         loop.run_forever()
