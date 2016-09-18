@@ -4,7 +4,18 @@
 
 {% block beforehead %}
 <link rel="stylesheet" href="/static/css/components/notify.gradient.min.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/jquery.dataTables.min.css">
+<link rel="stylesheet" type="text/css" href="/static/css/dataTables.uikit.min.css">
+<link rel="stylesheet" type="text/css" href="/static/css/buttons.dataTables.min.css">
 <script src="/static/js/components/notify.min.js"></script>
+<script src="/static/js/jquery.dataTables.min.js"></script>
+<script src="/static/js/dataTables.uikit.min.js"></script>
+<script src="/static/js/buttons.html5.min.js"></script>
+<script src="/static/js/buttons.print.min.js"></script>
+<script src="/static/js/dataTables.buttons.min.js"></script>
+<script src="/static/js/pdfmake.min.js"></script>
+<script src="/static/js/vfs_fonts.js"></script>
+<script src="/static/js/jszip.min.js"></script>
 <script>
 $(function () {
     var search = new Vue({
@@ -31,15 +42,54 @@ $(function () {
         }
     });
     $('#search').show();
+    $('#employees_dept').hide();
 });
 function refreshTable(data) {
-    var vm = new Vue({
-        el: '#vm',
-        data: {
-            emp_infos: data.emp_infos,
-        },
+    $(document).ready(function() {
+        $('#employees_dept').DataTable( {
+            data: data.emp_infos,
+            columns: [
+            { data: "emp_id" },
+            { data: "emp_name" },
+            { data: "sex" },
+            { data: "email" },
+            { data: "phone_num" },
+            { data: "level_name" },
+            { data: "leader_id" },
+            { data: "dept_name" },
+            { data: "manager_id" }
+            ],
+            language:{
+                "sProcessing":   "处理中...",
+                "sLengthMenu":   "显示 _MENU_ 项结果",
+                "sZeroRecords":  "没有匹配结果",
+                "sInfo":         "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
+                "sInfoEmpty":    "显示第 0 至 0 项结果，共 0 项",
+                "sInfoFiltered": "(由 _MAX_ 项结果过滤)",
+                "sInfoPostFix":  "",
+                "sSearch":       "搜索:",
+                "sUrl":          "",
+                "sEmptyTable":     "表中数据为空",
+                "sLoadingRecords": "载入中...",
+                "sInfoThousands":  ",",
+                "oPaginate": {
+                    "sFirst":    "首页",
+                    "sPrevious": "上页",
+                    "sNext":     "下页",
+                    "sLast":     "末页"
+                },
+                "oAria": {
+                    "sSortAscending":  ": 以升序排列此列",
+                    "sSortDescending": ": 以降序排列此列"
+                }
+            },
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ]
+        });
+        $('#employees_dept').show();
     });
-    $('#vm').show();
 }
 </script>
 {% endblock %}
@@ -60,35 +110,20 @@ function refreshTable(data) {
         </div>
     </form>
     <hr class="uk-article-divider" />
-    <div id="vm" class="uk-width-1-1">
-        <table class="uk-table uk-table-hover">
-            <thead>
-                <tr>
-                    <th>员工编号</th>
-                    <th>姓名</th>
-                    <th>性别</th>
-                    <th>邮箱</th>
-                    <th>电话号</th>
-                    <th>级别</th>
-                    <th>领导编号</th>
-                    <th>部门名称</th>
-                    <th>经理编号</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-repeat="emp_info : emp_infos">
-                    <td v-text="emp_info['emp_id']"></td>
-                    <td v-text="emp_info['emp_name']"></td>
-                    <td v-text="emp_info['sex']"></td>
-                    <td v-text="emp_info['email']"></td>
-                    <td v-text="emp_info['phone_num']"></td>
-                    <td v-text="emp_info['level_name']"></td>
-                    <td v-text="emp_info['leader_id']"></td>
-                    <td v-text="emp_info['dept_name']"></td>
-                    <td v-text="emp_info['manager_id']"></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+    <table id="employees_dept" class="uk-table uk-table-hover" cellspacing="0" width="100%">
+        <thead>
+            <tr>
+                <th>员工编号</th>
+                <th>姓名</th>
+                <th>性别</th>
+                <th>邮箱</th>
+                <th>电话号</th>
+                <th>级别</th>
+                <th>领导编号</th>
+                <th>部门名称</th>
+                <th>经理编号</th>
+            </tr>
+        </thead>
+    </table>
 </div>
 {% endblock %}

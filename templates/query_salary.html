@@ -5,8 +5,19 @@
 {% block beforehead %}
 <link rel="stylesheet" href="/static/css/components/notify.gradient.min.css" />
 <link rel="stylesheet" href="/static/css/components/form-select.gradient.min.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/jquery.dataTables.min.css">
+<link rel="stylesheet" type="text/css" href="/static/css/dataTables.uikit.min.css">
+<link rel="stylesheet" type="text/css" href="/static/css/buttons.dataTables.min.css">
 <script src="/static/js/components/form-select.min.js"></script>
 <script src="/static/js/components/notify.min.js"></script>
+<script src="/static/js/jquery.dataTables.min.js"></script>
+<script src="/static/js/dataTables.uikit.min.js"></script>
+<script src="/static/js/buttons.html5.min.js"></script>
+<script src="/static/js/buttons.print.min.js"></script>
+<script src="/static/js/dataTables.buttons.min.js"></script>
+<script src="/static/js/pdfmake.min.js"></script>
+<script src="/static/js/vfs_fonts.js"></script>
+<script src="/static/js/jszip.min.js"></script>
 <script>
 $(function () {
     var search = new Vue({
@@ -45,16 +56,50 @@ $(function () {
         }
     });
     $('#search').show();
+    $('#query_salary').hide();
 });
 function refreshTable(data) {
-    var vm = new Vue({
-        el: '#vm',
-        data: {
-            basic_salary: data.basic_salary,
-            payrolls: data.payrolls,
-        },
+    $(document).ready(function() {
+        $('#query_salary').DataTable( {
+            data: data.payrolls,
+            columns: [
+            { data: "month" },
+            { data: "basic_salary" },
+            { data: "bonus" },
+            { data: "fine" },
+            { data: "sum" }
+            ],
+            language:{
+                "sProcessing":   "处理中...",
+                "sLengthMenu":   "显示 _MENU_ 项结果",
+                "sZeroRecords":  "没有匹配结果",
+                "sInfo":         "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
+                "sInfoEmpty":    "显示第 0 至 0 项结果，共 0 项",
+                "sInfoFiltered": "(由 _MAX_ 项结果过滤)",
+                "sInfoPostFix":  "",
+                "sSearch":       "搜索:",
+                "sUrl":          "",
+                "sEmptyTable":     "表中数据为空",
+                "sLoadingRecords": "载入中...",
+                "sInfoThousands":  ",",
+                "oPaginate": {
+                    "sFirst":    "首页",
+                    "sPrevious": "上页",
+                    "sNext":     "下页",
+                    "sLast":     "末页"
+                },
+                "oAria": {
+                    "sSortAscending":  ": 以升序排列此列",
+                    "sSortDescending": ": 以降序排列此列"
+                }
+            },
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ]
+        });
+        $('#query_salary').show();
     });
-    $('#vm').show();
 }
 </script>
 {% endblock %}
@@ -71,7 +116,7 @@ function refreshTable(data) {
                     <span>——请选择——</span>
                     <i class="uk-icon-caret-down"></i>
                     <select v-model="start_year">
-                        {% for i in range(1990, datetime.date.today().year+1) %}
+                        {% for i in range(1990, datetime.date.today().year+1)[::-1] %}
                             <option value="{{ i }}">{{ i }}</option>
                         {% endfor %}
                     </select>
@@ -96,7 +141,7 @@ function refreshTable(data) {
                     <span>——请选择——</span>
                     <i class="uk-icon-caret-down"></i>
                     <select v-model="end_year">
-                        {% for i in range(1990, datetime.date.today().year+1) %}
+                        {% for i in range(1990, datetime.date.today().year+1)[::-1] %}
                             <option value="{{ i }}">{{ i }}</option>
                         {% endfor %}
                     </select>
@@ -119,27 +164,16 @@ function refreshTable(data) {
         </div>
     </form>
     <hr class="uk-article-divider" />
-    <div id="vm" class="uk-width-1-1">
-        <table class="uk-table uk-table-hover">
-            <thead>
-                <tr>
-                    <th class="uk-width-1-5">时间</th>
-                    <th class="uk-width-1-5">基本工资</th>
-                    <th class="uk-width-1-5">奖金</th>
-                    <th class="uk-width-1-5">罚款</th>
-                    <th class="uk-width-1-5">合计</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-repeat="payroll : payrolls">
-                    <td v-text="payroll['month']"></td>
-                    <td v-text="basic_salary"></td>
-                    <td v-text="payroll['bonus']"></td>
-                    <td v-text="payroll['fine']"></td>
-                    <td v-text="payroll['sum']"></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+    <table id='query_salary' class="uk-table uk-table-hover" cellspacing="0" width="100%">
+        <thead>
+            <tr>
+                <th>时间</th>
+                <th>基本工资</th>
+                <th>奖金</th>
+                <th>罚款</th>
+                <th>合计</th>
+            </tr>
+        </thead>
+    </table>
 </div>
 {% endblock %}

@@ -3,7 +3,7 @@
 
 __author__ = 'cx'
 
-import asyncio, datetime
+import asyncio, datetime, logging
 
 import pymysql
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -20,7 +20,7 @@ HAS_VACATED       = 8
 
 def get_part_of_id(dt):
     date = datetime.datetime.strftime(dt,'%Y%m%d')
-    time_period = 'am' if (12 < dt.hour < 18) else 'pm'
+    time_period = 'pm' if dt.hour>=12 else 'am'
     return date+time_period
 
 def is_absent(attendance):
@@ -96,10 +96,11 @@ async def insert_records():
                                                                        null')
     if employees:
         now = datetime.datetime.now()
-        if 12 < now.hour < 18:
-            next_period = now + datetime.timedelta(hours=5)
+        if now.hour>=12:
+            next_period = datetime.datetime(now.year, now.month, now.day, 13)
         else:
-            next_period = now + datetime.timedelta(days=1, hours=19)
+            next_period = datetime.datetime(now.year, now.month, now.day, 7)
+            next_period += datetime.timedelta(days=1)
         for e in employees:
             attendance = Attendance(id=(get_part_of_id(next_period)+e.id),
                            emp_id = e.id, in_time=None, out_time=None,

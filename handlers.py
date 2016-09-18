@@ -108,7 +108,11 @@ def manage_modify_employee_info():
     }
 
 @get('/manage/manage_employee_skills')
-def manage_employee_skills():
+async def manage_employee_skills():
+    global __skills
+    if not __skills:
+        skills_list = await Skill.findAll()
+        __skills = {s['id']:s['name'] for s in skills_list}
     return {
         '__template__' : 'manage_employee_skills.html'
     }
@@ -476,9 +480,6 @@ async def modifyEmployeeInfo(*, emp_id, name, sex, email, phone_number, join_dat
 @post('/api/search_emp_skills')
 async def searchEmpSkills(*, emp_id):
     global __skills
-    if not __skills:
-        skills_list = await Skill.findAll()
-        __skills = {s['id']:s['name'] for s in skills_list}
     if not emp_id:
         emp_skills = await EmpSkill.findAll()
     else:
@@ -489,44 +490,51 @@ async def searchEmpSkills(*, emp_id):
 
 @post('/api/add_emp_skill')
 async def addEmpSkill(*, emp_id, skill_id):
+    global __skills
     emp_skill = await EmpSkill.findAll('`emp_id`=? and `skill_id`=?', [emp_id, skill_id])
     if len(emp_skill) != 0:
         raise APIValueError('duplicate record in emp_skills',
                                             '员工技能对照表中已经有了这条记录')
     emp_skill = EmpSkill(emp_id=emp_id, skill_id=skill_id, proficiency=1)
-    await emp_skill.save()
-    emp_skill['skill_name'] = __skills[emp_skill['skill_id']]
     logging.info('add emp_skill %s' % emp_skill)
-    return emp_skill
+    await emp_skill.save()
+    emp_skills = await EmpSkill.findAll('`emp_id`=? and `skill_id`=?', [emp_id, skill_id])
+    es = emp_skills[0]
+    es['skill_name'] = __skills[int(es['skill_id'])]
+    return es
 
 @post('/api/modify_emp_skill/{id}')
 async def modifyEmpSkill(id, *, proficiency):
+    global __skills
     emp_skill = await EmpSkill.find(id)
     if not emp_skill:
         raise APIValueError('emp_skill', '找不到该条员工技能记录')
     emp_skill.proficiency = proficiency
     await emp_skill.update()
-    emp_skill['skill_name'] = __skills[emp_skill['skill_id']]
+    emp_skill['skill_name'] = __skills[int(emp_skill['skill_id'])]
     logging.info('modify emp_skill %s' % emp_skill)
     return emp_skill
 
 @post('/api/delete_emp_skill')
 async def deleteEmpSkill(*, emp_id, skill_id):
+    global __skills
     emp_skill = await EmpSkill.findAll('`emp_id`=? and `skill_id`=?', [emp_id, skill_id])
-    if not emp_skill:
+    es = emp_skill[0]
+    if len(emp_skill) == 0:
         raise APIValueError('emp_skill', '找不到该条员工技能记录')
-    await (emp_skill[0]).remove()
-    emp_skill['skill_name'] = __skills[emp_skill['skill_id']]
-    logging.info('delete emp_skill %s' % emp_skill)
-    return emp_skill
+    await es.remove()
+    es['skill_name'] = __skills[int(es['skill_id'])]
+    logging.info('delete emp_skill %s' % es)
+    return es
 
 @post('/api/delete_emp_skill/{id}')
 async def deleteEmpSkillByID(id):
+    global __skills
     emp_skill = await EmpSkill.find(id)
     if not emp_skill:
         raise APIValueError('emp_skill', '找不到该条员工技能记录')
     await emp_skill.remove()
-    emp_skill['skill_name'] = __skills[emp_skill['skill_id']]
+    emp_skill['skill_name'] = __skills[int(emp_skill['skill_id'])]
     logging.info('delete emp_skill %s' % emp_skill)
     return emp_skill
 
@@ -628,7 +636,7 @@ async def queryEmployeesDept(*, dept_id):
                     where emp.dno = dept.id and emp.leave_date is null']
     args = []
     if dept_id:
-        sql.append('and dept_id=?')
+        sql.append('and dept.id=?')
         args.append(dept_id)
     global __level_name
     if __level_name is None:
@@ -658,14 +666,14 @@ async def queryEmployeesAttendance(*, emp_id):
                         where emp.id = atd.emp_id and emp.leave_date is null']
     args = []
     if emp_id:
-        sql.append('and emp_id=?')
+        sql.append('and emp.id=?')
         args.append(emp_id)
     rs = await orm.select(' '.join(sql), args)
     emp_atds = [{'emp_id':r['id'], 'emp_name':r['emp_name'],
 'in_time': r['in_time'].strftime('%Y-%m-%d %H:%M:%S') if r['in_time'] else '无',
 'out_time': r['out_time'].strftime('%Y-%m-%d %H:%M:%S') if r['out_time'] else '无',
                         'has_vacated': '是' if r['has_vacated'] else '否',
-                                 'vertifier_id':r.get('vertifier_id', '无'),
+                 'vertifier_id':r['vertifier_id'] if r['vertifier_id'] else '无',
         'status': __status[r['status']] if r['status'] else '未知'} for r in rs]
     return dict(emp_atds=emp_atds)
 
@@ -783,5 +791,6 @@ async def querySalary(request, *, start_year, start_month, end_year, end_month):
         raise APIValueError('month', '不存在符合条件的工资记录！')
     basic_salary = (await LevelSalary.find(user.level)).basic_salary
     payrolls = [{'month':e.month.strftime('%Y-%m'), 'bonus': e.bonus,\
-                'fine': e.fine, 'sum': basic_salary+e.bonus+e.fine} for e in ebfs]
-    return dict(basic_salary=basic_salary, payrolls=payrolls)
+                'fine': e.fine, 'sum': basic_salary+e.bonus+e.fine,\
+                 'basic_salary': basic_salary} for e in ebfs]
+    return dict(payrolls=payrolls)

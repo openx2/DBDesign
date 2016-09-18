@@ -4,7 +4,18 @@
 
 {% block beforehead %}
 <link rel="stylesheet" href="/static/css/components/notify.gradient.min.css" />
+<link rel="stylesheet" type="text/css" href="/static/css/jquery.dataTables.min.css">
+<link rel="stylesheet" type="text/css" href="/static/css/dataTables.uikit.min.css">
+<link rel="stylesheet" type="text/css" href="/static/css/buttons.dataTables.min.css">
 <script src="/static/js/components/notify.min.js"></script>
+<script src="/static/js/jquery.dataTables.min.js"></script>
+<script src="/static/js/dataTables.uikit.min.js"></script>
+<script src="/static/js/buttons.html5.min.js"></script>
+<script src="/static/js/buttons.print.min.js"></script>
+<script src="/static/js/dataTables.buttons.min.js"></script>
+<script src="/static/js/pdfmake.min.js"></script>
+<script src="/static/js/vfs_fonts.js"></script>
+<script src="/static/js/jszip.min.js"></script>
 <script>
 $(function () {
     var search = new Vue({
@@ -31,15 +42,53 @@ $(function () {
         }
     });
     $('#search').show();
+    $('#employees_attendance').hide();
 });
+
 function refreshTable(data) {
-    var vm = new Vue({
-        el: '#vm',
-        data: {
-            emp_atds: data.emp_atds,
-        },
+    $(document).ready(function() {
+        $('#employees_attendance').DataTable( {
+            data: data.emp_atds,
+            columns: [
+            { data: "emp_id" },
+            { data: "emp_name" },
+            { data: "in_time" },
+            { data: "out_time" },
+            { data: "has_vacated" },
+            { data: "vertifier_id" },
+            { data: "status" }
+            ],
+            language:{
+                "sProcessing":   "处理中...",
+                "sLengthMenu":   "显示 _MENU_ 项结果",
+                "sZeroRecords":  "没有匹配结果",
+                "sInfo":         "显示第 _START_ 至 _END_ 项结果，共 _TOTAL_ 项",
+                "sInfoEmpty":    "显示第 0 至 0 项结果，共 0 项",
+                "sInfoFiltered": "(由 _MAX_ 项结果过滤)",
+                "sInfoPostFix":  "",
+                "sSearch":       "搜索:",
+                "sUrl":          "",
+                "sEmptyTable":     "表中数据为空",
+                "sLoadingRecords": "载入中...",
+                "sInfoThousands":  ",",
+                "oPaginate": {
+                    "sFirst":    "首页",
+                    "sPrevious": "上页",
+                    "sNext":     "下页",
+                    "sLast":     "末页"
+                },
+                "oAria": {
+                    "sSortAscending":  ": 以升序排列此列",
+                    "sSortDescending": ": 以降序排列此列"
+                }
+            },
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ]
+        });
+        $('#employees_attendance').show();
     });
-    $('#vm').show();
 }
 </script>
 {% endblock %}
@@ -60,32 +109,19 @@ function refreshTable(data) {
         </div>
     </form>
     <hr class="uk-article-divider" />
-    <div id="vm" class="uk-width-1-1">
-        <table class="uk-table uk-table-hover">
-            <thead>
-                <tr>
-                    <th>员工编号</th>
-                    <th>姓名</th>
-                    <th>签到时间</th>
-                    <th>签离时间</th>
-                    <th>是否请假</th>
-                    <th>批准人编号</th>
-                    <th>状态</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-repeat="emp_atd : emp_atds">
-                    <td v-text="emp_atd['emp_id']"></td>
-                    <td v-text="emp_atd['emp_name']"></td>
-                    <td v-text="emp_atd['in_time']"></td>
-                    <td v-text="emp_atd['out_time']"></td>
-                    <td v-text="emp_atd['has_vacated']"></td>
-                    <td v-text="emp_atd['vertifier_id']"></td>
-                    <td v-text="emp_atd['status']"></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+    <table id="employees_attendance" class="uk-table uk-table-hover" cellspacing="0" width="100%">
+        <thead>
+            <tr>
+                <th>员工编号</th>
+                <th>姓名</th>
+                <th>签到时间</th>
+                <th>签离时间</th>
+                <th>是否请假</th>
+                <th>批准人编号</th>
+                <th>状态</th>
+            </tr>
+        </thead>
+    </table>
 </div>
 {% endblock %}
 
