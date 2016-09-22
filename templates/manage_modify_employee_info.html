@@ -33,6 +33,7 @@ $(function () {
                     if (err) {
                         return $form.showFormError(err);
                     }
+                    $form.showFormLoading(false);
                     modify_employee_info.emp_id = r["id"];
                     modify_employee_info.name = r["name"];
                     modify_employee_info.sex = r["sex"];
@@ -112,7 +113,6 @@ $(function () {
         }
     });
     $('#modify_employee_info').show();
-    $("#search_button").attr("disabled",false);
 });
 </script>
 {% endblock %}

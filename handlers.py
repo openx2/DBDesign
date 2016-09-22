@@ -168,6 +168,8 @@ _COOKIE_KEY = 'software academy'
 __skills = None
 __level_name = None
 __status = { NORMAL: '正常', LEAVE_EARLY: '早退', OVERDUE: '迟到',
+            LEAVE_EARLY+OVERDUE: '迟到且早退',
+            LEAVE_EARLY+ABSENCE_FROM_DUTY:'缺勤且早退',
             ABSENCE_FROM_DUTY: '缺勤', HAS_VACATED: '请假' }
 
 def json_default(obj):

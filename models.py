@@ -76,3 +76,15 @@ class EmpBonusFine(Model):
     month = DatetimeField()
     bonus = IntegerField()
     fine = IntegerField()
+
+class EmpMonthSalary(Model):
+    '''员工月工资视图，包括员工编号、姓名、月份、基本工资、奖金、罚款、总计'''
+    __table__ = 'emp_month_salary'
+
+    id = StringField(ddl='char(20)')
+    name = StringField(ddl='char(20)')
+    month = DatetimeField()
+    basic_salary = IntegerField()
+    bonus = IntegerField()
+    fine = IntegerField()
+    sum = IntegerField()

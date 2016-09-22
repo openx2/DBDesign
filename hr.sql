@@ -98,17 +98,22 @@ create table attendance (
     primary key (`id`)
 ) engine = innodb default charset=utf8;
 
+-- 创建员工月工资视图
+create view emp_month_salary as select employees.id,employees.name,month,basic_salary,bonus,fine,(basic_salary+bonus+fine) `sum` from employees,level_salary,emp_bonuses_fines where employees.id = emp_bonuses_fines.emp_id and level_salary.level = employees.level;
+
 -- 在有新员工加入时自动增加部门最新员工编号
 create trigger dept_last_num_increase
 after insert on employees
 for each row
     update departments set last_num = last_num + 1 where id = new.dno;
 
+-- 在有新员工加入时自动计算他的权限级别
 create trigger level_to_authority
 before insert on employees
 for each row
 	set new.authority=11-new.level;
 
+-- 在有新员工加入时自动判断是否为部门经理并更新部门的经理编号
 delimiter //
 create trigger set_dept_manager
 after insert on employees
